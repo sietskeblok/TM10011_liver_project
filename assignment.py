@@ -12,3 +12,9 @@ data = load_data()
 print(f'The number of samples: {len(data.index)}')
 print(f'The number of columns: {len(data.columns)}')
 print("Hopelijk werkt dit")
+
+# Aantal missende waarden per kolom
+print(data.isnull().sum())
+
+# Check of er überhaupt missende waarden zijn
+print(data.isnull().values.any())
