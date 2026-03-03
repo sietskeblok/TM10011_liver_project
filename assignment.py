@@ -129,3 +129,10 @@ print(f"Gemiddelde nauwkeurigheid over 5 folds: {scores.mean()}")
 
 
 # %%
+print("Hopelijk werkt dit")
+
+# Aantal missende waarden per kolom
+print(data.isnull().sum())
+
+# Check of er überhaupt missende waarden zijn
+print(data.isnull().values.any())
