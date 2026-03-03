@@ -7,7 +7,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split 
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy.stats import anderson
+
 
 from worcliver.load_data import load_data
 data = load_data()
@@ -19,29 +19,6 @@ y = data['label']  # De targetvariabele is 'label'
 # Splits de data in trainings- en testsets (bijv. 80% training en 20% test)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-# Controleren normale verdeling data-set
-# Lijst om Anderson-Darling resultaten op te slaan
-normal_features = []
-non_normal_features = []
-
-# Voer de Anderson-Darling test uit voor elke feature
-for column in X.columns:
-    result = anderson(X[column].dropna(), dist='norm')
-    
-    # Als de teststatistiek groter is dan de kritische waarde bij 5% significatie, dan is het niet normaal verdeeld
-    if result.statistic > result.critical_values[2]:  # Vergelijk met de kritische waarde voor 5% significantie
-        non_normal_features.append(column)
-    else:
-        normal_features.append(column)
-
-# Bereken het percentage van normaal en niet-normaal verdeelde features
-total_features = len(X.columns)
-normal_percentage = (len(normal_features) / total_features) * 100
-non_normal_percentage = (len(non_normal_features) / total_features) * 100
-
-# Print de resultaten
-print(f"Aantal normaal verdeelde features: {len(normal_features)} ({normal_percentage:.2f}%)")
-print(f"Aantal niet normaal verdeelde features: {len(non_normal_features)} ({non_normal_percentage:.2f}%)")
 
 # Bereken de eerste (Q1) en derde kwartielen (Q3)
 Q1 = X.quantile(0.25)
