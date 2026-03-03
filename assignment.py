@@ -72,7 +72,7 @@ skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 model = LogisticRegression()
 
 # Gebruik cross_val_score om het model te evalueren met 5-voudige cross-validatie
-scores = cross_val_score(model, X, y, cv=skf)
+scores = cross_val_score(model, X_train, y_train, cv=skf)
 
 # Print de prestaties voor elke fold
 print(f"Scores per fold: {scores}")
