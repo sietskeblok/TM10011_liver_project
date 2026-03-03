@@ -1,46 +1,26 @@
-# ## Data loading and cleaning
-# Below are functions to load the dataset of your choice. 
-# After that, it is all up to you to create and evaluate a classification method. 
-# Beware, there may be missing values in these datasets. 
-# Good luck!
-
-
-#%% Data loading 
+#%% Main code Liver assignment 
 from sklearn.linear_model import LogisticRegression
-
-from worcliver.load_data import load_data
-
-data = load_data()
-print(f'The number of samples: {len(data.index)}')
-print(f'The number of columns: {len(data.columns)}')
-
-benigne_count = data[data['label'] == 'benign'].shape[0]
-maligne_count = data[data['label'] == 'malignant'].shape[0]
-
-print(data['label'].unique())
-
-print(f"Aantal samples met label 'benign': {benigne_count}")
-print(f"Aantal samples met label 'malignant': {maligne_count}")
-
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 import numpy as np
 from sklearn.model_selection import train_test_split 
-
 import seaborn as sns
 import matplotlib.pyplot as plt
-#print(data.columns)
+from scipy.stats import anderson
 
-
+from worcliver.load_data import load_data
+data = load_data()
 
 # Verwijder label uit kolommen voor alleen features 
 X = data.drop(columns=['label'])  # Verwijder zowel 'label' als 'ID' van de features
 y = data['label']  # De targetvariabele is 'label'
 
-from scipy.stats import anderson
-# Lijst om Anderson-Darling resultaten op te slaan
+# Splits de data in trainings- en testsets (bijv. 80% training en 20% test)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
+# Controleren normale verdeling data-set
+# Lijst om Anderson-Darling resultaten op te slaan
 normal_features = []
 non_normal_features = []
 
@@ -80,11 +60,6 @@ outliers = data[(X < lower_bound) | (X > upper_bound)]
 # Print het aantal outliers
 print(f"Aantal outliers: {len(outliers)}")
 
-# Splits de data in trainings- en testsets (bijv. 80% training en 20% test)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-
-print(f'Training set size: {len(X_train)}')
-print(f'Test set size: {len(X_test)}')
 
 # scaling 
 from sklearn.preprocessing import RobustScaler
