@@ -51,7 +51,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Visualiseer een boxplot van een specifieke feature na scaling
-sns.boxplot(x=X_scaled[:, 3])  # Kies bijvoorbeeld de eerste feature
+sns.boxplot(x=X_scaled[:, 80])  # Kies bijvoorbeeld de eerste feature
 plt.title('Boxplot van de eerste feature na Robust Scaling')
 plt.show()
 
