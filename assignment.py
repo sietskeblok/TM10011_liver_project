@@ -7,6 +7,14 @@ import numpy as np
 from sklearn.model_selection import train_test_split 
 import seaborn as sns
 import matplotlib.pyplot as plt
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn import svm
+from sklearn import feature_selection, model_selection
+import matplotlib.pyplot as plt
+import sklearn.datasets as ds
+from sklearn.ensemble import RandomForestClassifier
+
 
 from worcliver.load_data import load_data
 data = load_data()
