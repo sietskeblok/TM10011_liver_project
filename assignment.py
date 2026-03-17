@@ -27,38 +27,3 @@ scaler = RobustScaler()
 # Pas de scaler toe op de trainingsdata
 X_scaled = scaler.fit_transform(X_train)
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-
-
-from sklearn import svm
-from sklearn import feature_selection, model_selection
-import matplotlib.pyplot as plt
-import sklearn.datasets as ds
-
-from sklearn.ensemble import RandomForestClassifier
-
-
-
-# Create the RFE object and compute a cross-validated score.
-svc = svm.SVC(kernel="rbf")
-
-
-from sklearn.ensemble import RandomForestClassifier
-
-#classifier
-rf = RandomForestClassifier(n_estimators=100, random_state=42)
-rfecv = feature_selection.RFECV(
-    estimator=rf, step=5,
-    cv=model_selection.StratifiedKFold(4),
-    scoring='roc_auc')
-rfecv.fit(X_train, y_train)
-
-
-# Plot number of features VS. cross-validation scores
-plt.figure()
-plt.xlabel("Number of features selected")
-plt.ylabel("Cross validation score (nb of correct classifications)")
-plt.plot(range(1, len(rfecv.cv_results_["mean_test_score"]) + 1), rfecv.cv_results_["mean_test_score"])
-plt.show()
