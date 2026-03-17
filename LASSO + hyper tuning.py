@@ -6,25 +6,21 @@ from sklearn.metrics import roc_auc_score, accuracy_score, confusion_matrix, cla
 
 from assignment import X_train, X_test, X_scaled, y_train, y_test
 
-# --- Zorg dat de labels numeriek zijn ---
 y_train_num = y_train.map({'benign': 0, 'malignant': 1})
 y_test_num = y_test.map({'benign': 0, 'malignant': 1})
 
-# --- Hyperparameter grid voor Logistic Regression ---
 param_grid = {
     'C': [0.01, 0.1, 1, 10],
     'class_weight': [None, 'balanced']
 }
 
-# --- Model zonder deprecated penalty argument ---
 model = LogisticRegression(
     solver='liblinear',      # liblinear ondersteunt L1 regularisatie
     penalty='l1',            # L1 regularisatie
-    max_iter=5000,
+    max_iter=10000,
     random_state=42
 )
 
-# --- GridSearchCV voor hyperparameter tuning ---
 grid = GridSearchCV(
     model,
     param_grid,
