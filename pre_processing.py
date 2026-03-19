@@ -4,6 +4,8 @@ import pandas as pd
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import RobustScaler
 
+data = pd.read_pickle("data.pkl")
+
 
 # Verwijder label uit kolommen voor alleen features 
 X = data.drop(columns=['label'])  # Verwijder zowel 'label' als 'ID' van de features
@@ -51,11 +53,11 @@ print(f"Removed zero variance: {removed_variance}")
 print(f"Removed high correlation: {removed_corr}")
 print(f"Final features: {X_train_filtered.shape[1]}")
 '''
-
 # Data scalen
 scaler = RobustScaler()
 X_train_filtered_scaled = scaler.fit_transform(X_train_filtered)
 X_test_filtered_scaled = scaler.transform(X_test_filtered)
+
 
 # Data converteren naar df
 X_train_filtered_scaled = pd.DataFrame(
