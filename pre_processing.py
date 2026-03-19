@@ -3,7 +3,12 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import RobustScaler
+from worcliver.load_data import load_data
 
+#data inladen
+data = load_data()
+
+print("data geladen")
 
 # Verwijder label uit kolommen voor alleen features 
 X = data.drop(columns=['label'])  # Verwijder zowel 'label' als 'ID' van de features
@@ -70,8 +75,21 @@ X_test_filtered_scaled = pd.DataFrame(
     index=X_test_filtered.index
 )
 
+#omzetten naar binary
+y_train = y_train.replace({'benign': 0, 'malignant': 1})
+y_test = y_test.replace({'benign': 0, 'malignant': 1})
+
 #Data opslaan als pickle 
 X_train_filtered_scaled.to_pickle("X_train_filtered_scaled.pkl")
 X_test_filtered_scaled.to_pickle("X_test_filtered_scaled.pkl")
 y_train.to_pickle("y_train.pkl")
 y_test.to_pickle("y_test.pkl")
+
+print("data opgeslagen")
+
+''' plak dit in de file waar je data in wil lezen
+X_train = pd.read_pickle("X_train_filtered_scaled.pkl")
+X_test = pd.read_pickle("X_test_filtered_scaled.pkl")
+y_train = pd.read_pickle("y_train.pkl")
+y_test = pd.read_pickle("y_test.pkl")
+'''

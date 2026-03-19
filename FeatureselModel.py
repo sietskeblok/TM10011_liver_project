@@ -1,8 +1,3 @@
-from assignment import X_train, y_train
-
-# Labels van data type string naar integer
-y_train = y_train.replace({'benign': 0, 'malignant': 1})
-
 # Importeren modules
 import numpy as np
 from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
@@ -13,6 +8,19 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
 from scipy.stats import mannwhitneyu
 from sklearn.svm import SVC
+import pandas as pd
+
+#data inladen
+X_train = pd.read_pickle("X_train_filtered_scaled.pkl")
+X_test = pd.read_pickle("X_test_filtered_scaled.pkl")
+y_train = pd.read_pickle("y_train.pkl")
+y_test = pd.read_pickle("y_test.pkl")
+
+print("data ingeladen")
+#print (X_train)
+#print (y_train)
+
+
 
 # Mann Whitney-U feature selectie
 def mannwhitneyu_test(X, y):
