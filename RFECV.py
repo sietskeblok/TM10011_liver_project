@@ -26,16 +26,18 @@ from worcliver.load_data import load_data
 svc = svm.SVC(kernel="rbf")
 
 from sklearn.ensemble import RandomForestClassifier
+print("werkt")
 
 #classifier
 rf = RandomForestClassifier(n_estimators=100, random_state=42)
 rfecv = feature_selection.RFECV(
     estimator=rf, step=1,
-    cv=model_selection.StratifiedKFold(4),
+    cv=model_selection.StratifiedKFold(5),
     scoring='roc_auc')
 rfecv.fit(X_train, y_train)
 print("RFECV fitting complete.")
 
+print("Selectie compleet")
 
 # Vind de index van de iteratie waar 50 features geselecteerd zijn
 features_50_index = np.where(np.array(range(1, len(rfecv.cv_results_["mean_test_score"]) + 1)) == 50)[0][0]
