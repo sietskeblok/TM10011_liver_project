@@ -11,10 +11,9 @@ from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.feature_selection import RFECV, SelectKBest, SelectFromModel
 from sklearn.linear_model import LogisticRegression, Lasso
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.neighbors import KNeighborsClassifier
 from turtle import pd
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.preprocessing import RobustScaler, LabelEncoder
 from scipy.stats import mannwhitneyu
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
@@ -32,6 +31,7 @@ def mannwhitneyu_test(X_train, y_train):
 print(np.unique(y_train, return_counts=True))
 '''
 
+#Mann-WHithtney U-test functie voor feature selectie
 def mannwhitneyu_test(X, y):
     p_values = []
     for i in range(X.shape[1]):
@@ -43,16 +43,15 @@ def mannwhitneyu_test(X, y):
 # Maak de classifiers
 classifiers = {
     'Logistic Regression': LogisticRegression(max_iter=1000),
-    'Random Forest': RandomForestClassifier(n_estimators=100, random_state=42),
+    'Random Forest': RandomForestClassifier( random_state=42),
     'SVM': SVC(kernel='linear') ,
 }
 
-# Feature Selectie methoden: Mann-Whitney U (via SelectKBest) en Lasso
+# Feature Selectie methoden:
 feature_selectors = {
-    'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test, k=15),  # Top 115 features met de laagste p-waarde
-    'Lasso': SelectFromModel(Lasso(alpha=0.01)),  # Gebruik Lasso voor feature selectie via L1 regularisatie
-    'RFECV': RFECV(estimator=RandomForestClassifier(n_estimators=100, random_state=42), step=20, 
-                   cv=StratifiedKFold(3), scoring='accuracy')  # RFECV voor feature selectie
+    'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),  
+    'RFECV': RFECV(estimator=RandomForestClassifier(random_state=42), step=20, 
+                   cv=StratifiedKFold(3), scoring='accuracy')  
 }
 
 # Nested Cross-Validation instellingen
@@ -62,23 +61,16 @@ inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)  # Binnens
 # Lijst om de resultaten van de cross-validatie op te slaan
 results = []
 
-# Maak de LabelEncoder om de labels om te zetten naar numerieke waarden
-label_encoder = LabelEncoder()
-y_train_encoded = label_encoder.fit_transform(y_train)  # Zet de labels om naar numerieke waarden (0 en 1)
-
 # Loop over classifiers en feature selectors
 for clf_name, clf in classifiers.items():
     for selector_name, selector in feature_selectors.items():
         
         # Maak een pipeline met de feature selector en classifier
         pipeline = Pipeline([
-            ('scaler', StandardScaler()),  # Schaal de data
-            ('feature_selection', selector),  # Selecteer de features via SelectKBest of Lasso
-            ('classifier', clf)  # Gebruik de classifier
+            ('scaler', RobustScaler()),  # Schaal de data --> moet er nog uit
+            ('feature_selection', selector),  
+            ('classifier', clf)  
         ])
-        
-        # Nested Cross-validation uitvoeren
-        print(f"Evaluating {clf_name} with {selector_name}")
         
         # Binnenste cross-validatie voor feature selectie
         inner_scores = cross_val_score(pipeline, X_train, y_train_encoded, cv=inner_cv, scoring='accuracy')
