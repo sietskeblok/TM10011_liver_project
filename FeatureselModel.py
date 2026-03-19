@@ -1,14 +1,9 @@
-# =========================
-# DATA
-# =========================
 from assignment import X_train, y_train
 
-# labels naar 0/1
+# Labels van data type string naar integer
 y_train = y_train.replace({'benign': 0, 'malignant': 1})
 
-# =========================
-# IMPORTS
-# =========================
+# Importeren modules
 import numpy as np
 from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
 from sklearn.feature_selection import RFECV, SelectKBest
@@ -19,9 +14,7 @@ from sklearn.preprocessing import RobustScaler
 from scipy.stats import mannwhitneyu
 from sklearn.svm import SVC
 
-# =========================
-# MANN-WHITNEY FEATURE SELECTIE
-# =========================
+# Mann Whitney-U feature selectie
 def mannwhitneyu_test(X, y):
     p_values = []
     for i in range(X.shape[1]):
@@ -29,18 +22,14 @@ def mannwhitneyu_test(X, y):
         p_values.append(p_value)
     return -np.array(p_values)  # lagere p = hogere score
 
-# =========================
-# MODELLEN
-# =========================
+# Verschillende classifiers
 classifiers = {
     'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
     'Random Forest': RandomForestClassifier(random_state=42),
     'SVM': SVC(kernel='linear')
 }
 
-# =========================
-# FEATURE SELECTIE (zonder Lasso)
-# =========================
+# Feature selectie
 feature_selectors = {
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
@@ -51,17 +40,13 @@ feature_selectors = {
     )
 }
 
-# =========================
-# CV SETUP
-# =========================
+# Cross validation
 outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
 results = []
 
-# =========================
-# LOOP OVER ALLES
-# =========================
+# For loop voor feature selectie, classifier, hyperparameter tuning en validatie
 for clf_name, clf in classifiers.items():
     for selector_name, selector in feature_selectors.items():
 
@@ -74,9 +59,7 @@ for clf_name, clf in classifiers.items():
             ('classifier', clf)
         ])
 
-        # =========================
-        # HYPERPARAMETERS PER MODEL
-        # =========================
+        # Hyperparameters per classifier
         param_grid = {}
 
         # Logistic Regression
@@ -96,9 +79,7 @@ for clf_name, clf in classifiers.items():
         if selector_name == 'Mann-Whitney U':
             param_grid['feature_selection__k'] = [5, 10, 15, 20]
 
-        # =========================
-        # GRID SEARCH (INNER LOOP)
-        # =========================
+        # Grid search (inner loop)
         grid = GridSearchCV(
             pipeline,
             param_grid,
@@ -107,9 +88,7 @@ for clf_name, clf in classifiers.items():
             n_jobs=-1
         )
 
-        # =========================
-        # OUTER LOOP
-        # =========================
+        # Outer loop
         outer_scores = cross_val_score(
             grid,
             X_train,
@@ -123,9 +102,7 @@ for clf_name, clf in classifiers.items():
 
         results.append((clf_name, selector_name, outer_scores.mean(), outer_scores.std()))
 
-# =========================
-# RESULTATEN
-# =========================
+# Print resultaten
 print("\nFinal Results (Nested CV):")
 for result in results:
     print(f"{result[0]} with {result[1]}: Mean = {result[2]:.4f}, Std = {result[3]:.4f}")
