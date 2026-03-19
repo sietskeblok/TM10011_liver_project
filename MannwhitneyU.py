@@ -31,3 +31,14 @@ top_50_p_values = p_values.nsmallest(50)
 # Print alleen de p-waarden van de 50 geselecteerde features
 print("\nTop 50 p-values (lowest p-values):")
 print(top_50_p_values.values)
+
+significance_threshold = 0.05
+
+# Vind de significante features op basis van de p-waarde drempel
+significant_features = p_values[p_values < significance_threshold]
+
+# Print het aantal significante features
+print(f"Aantal significante features volgens de Mann-Whitney U-test: {len(significant_features)}")
+
+# Print de lijst van significante features
+print(f"Significante features: {significant_features.index.tolist()}")
