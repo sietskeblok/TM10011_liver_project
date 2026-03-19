@@ -1,7 +1,9 @@
 
 #data importeren
-
 from assignment import X_train, y_train
+
+#labels omschrijven naar 0 en 1
+y_train = y_train.replace({'benign': 0, 'malignant': 1})
 
 #imports
 import numpy as np
@@ -16,7 +18,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from scipy.stats import mannwhitneyu
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
-
+'''
 # Functie voor de Mann-Whitney U-test voor feature selectie
 def mannwhitneyu_test(X_train, y_train):
     p_values = []
@@ -28,7 +30,19 @@ def mannwhitneyu_test(X_train, y_train):
     return np.array(p_values)
 
 print(np.unique(y_train, return_counts=True))
- 
+'''
+
+def mannwhitneyu_test(X, y):
+    p_values = []
+    for i in range(X.shape[1]):
+        stat, p_value = mannwhitneyu(X[:, i][y == 0], X[:, i][y == 1])  # Mann-Whitney U-test
+        p_values.append(p_value)
+    return -np.array(p_values)  # Om hoger te score als de p-waarde lager is
+
+feature_selectors = {
+    'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test, k=15)
+}
+
 # Maak de classifiers
 classifiers = {
     'Logistic Regression': LogisticRegression(max_iter=1000),
