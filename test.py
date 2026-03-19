@@ -39,9 +39,6 @@ def mannwhitneyu_test(X, y):
         p_values.append(p_value)
     return -np.array(p_values)  # Om hoger te score als de p-waarde lager is
 
-feature_selectors = {
-    'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test, k=15)
-}
 
 # Maak de classifiers
 classifiers = {
