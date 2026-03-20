@@ -134,8 +134,8 @@ X_test = pd.read_pickle("X_test.pkl")
 y_train = pd.read_pickle("y_train.pkl")
 y_test = pd.read_pickle("y_test.pkl")
 
-# =========================
-# Custom correlatiefilter
+
+#correlatiefilter
 class CorrelationFilter(BaseEstimator, TransformerMixin):
     def __init__(self, threshold=0.95):
         self.threshold = threshold
@@ -158,8 +158,8 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
         return X.drop(columns=self.to_drop_, errors='ignore')
 
 
-# =========================
-# Mann-Whitney U feature selectie
+
+# Mann-Whitney U feature selectie definitie
 def mannwhitneyu_test(X, y):
     X = np.asarray(X)
     y = np.asarray(y)
@@ -172,32 +172,31 @@ def mannwhitneyu_test(X, y):
     return -np.array(p_values)  # lagere p = hogere score
 
 
-# =========================
-# Verschillende classifiers
+
+# Verschillende classifiers in ons model
 classifiers = {
     'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
     'Random Forest': RandomForestClassifier(random_state=42),
-    'SVM': SVC(kernel='linear')
+    'SVM': SVC(kernel='linear') #dit nog aanpassen naar polynoom?
 }
 
 
-# =========================
-# Feature selectie
+
+# Feature selectie modellen
 feature_selectors = {
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
         estimator=RandomForestClassifier(random_state=42),
-        step=30,
+        step=30, #deze moeten omlaag
         cv=4,
         scoring='accuracy'
     )
 }
 
 
-# =========================
 # Cross-validation
-outer_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
-inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+outer_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
 
 results = []
 
@@ -206,8 +205,7 @@ best_grid = None
 best_name = None
 
 
-# =========================
-# Nested CV loop
+# Nested CV loop maken
 for clf_name, clf in classifiers.items():
     for selector_name, selector in feature_selectors.items():
 
@@ -275,18 +273,16 @@ for clf_name, clf in classifiers.items():
             best_name = (clf_name, selector_name)
 
 
-# =========================
 # Resultaten nested CV
 print("\nFinal Results (Nested CV):")
 for result in results:
     print(f"{result[0]} with {result[1]}: Mean = {result[2]:.4f}, Std = {result[3]:.4f}")
 
 
-# =========================
 # Beste model opnieuw fitten op hele trainingsset, want je hebt nog niet getrained op de hele trainset
 best_grid.fit(X_train, y_train)
 
-# Voorspellingen
+# Op testset testen
 y_pred = best_grid.predict(X_test)
 
 print("\nBest model:")
