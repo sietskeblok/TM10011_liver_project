@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #from MannwhitneyU import best_features_mwu
 #from RFECV import selected_50_features
 
@@ -256,7 +255,6 @@ for key, value in grid_search.best_params_.items():
     print(f"  {key}: {value}")
 
 print(f"\nBeste inner CV score: {grid_search.best_score_:.4f}")
-=======
 from MannwhitneyU import significant_features
 from RFECV import selected_50_features
 
@@ -271,4 +269,3 @@ print(f"Aantal gemeenschappelijke features: {len(common_features)}")
 
 # Print de lijst van gemeenschappelijke features
 print(f"Gemeenschappelijke features: {common_features}")
->>>>>>> 76c7c4767f0df160b9d174d417fa0e8c1c1e996f
