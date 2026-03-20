@@ -177,7 +177,7 @@ def mannwhitneyu_test(X, y):
 classifiers = {
     'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
     'Random Forest': RandomForestClassifier(random_state=42),
-    'SVM': SVC(kernel='linear') #dit nog aanpassen naar polynoom?
+    'SVM': SVC(kernel='linear', probability=True) #dit nog aanpassen naar polynoom?
 }
 
 
@@ -281,7 +281,12 @@ for result in results:
 
 # Beste model opnieuw fitten op hele trainingsset, want je hebt nog niet getrained op de hele trainset
 best_grid.fit(X_train, y_train)
-
+# %%
+#grid opslaan 
+import joblib
+joblib.dump(best_grid, "best_model.pkl")
+# %%
+best_grid = joblib.load("best_model.pkl")
 # Op testset testen
 y_pred = best_grid.predict(X_test)
 
@@ -298,3 +303,23 @@ print(f"Accuracy: {accuracy:.4f}")
 print(f"False Positives (benign → malignant): {fp}")
 print(f"False Negatives (malignant → benign): {fn}")
 
+
+# %%
+#ROC code
+from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score
+import matplotlib.pyplot as plt
+
+#print(best_grid)
+y_proba = best_grid.predict_proba(X_test)[:, 1]
+
+fpr, tpr, _ = roc_curve(y_test, y_proba)
+roc_auc = roc_auc_score(y_test, y_proba)
+
+plt.figure()
+plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
+plt.plot([0, 1], [0, 1], linestyle='--')
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC curve")
+plt.legend()
+plt.show()
