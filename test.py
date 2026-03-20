@@ -26,7 +26,6 @@ def mannwhitneyu_test(X_train, y_train):
         _, p_value = mannwhitneyu(group1, group2)
         p_values.append(p_value)
     return np.array(p_values)
-
 print(np.unique(y_train, return_counts=True))
  
 # Maak de classifiers
