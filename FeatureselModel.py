@@ -188,11 +188,17 @@ f2 = fbeta_score(y_test, y_pred, beta=2)
 # Confusion matrix → haalt TN, FP, FN, TP eruit
 tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
 
+# Sensitiviteit en specificiteit berekenen
+sensitivity = tp / (tp + fn)  # Sensitiviteit
+specificity = tn / (tn + fp)  # Specificiteit
+
 print("\nTest set performance:")
 print(f"Accuracy: {accuracy:.4f}")
 print(f"False Positives (benign → malignant): {fp}")
 print(f"False Negatives (malignant → benign): {fn}")
 print(f"F2-score: {f2:.4f}")
+print(f"Sensitivity (Recall): {sensitivity:.4f}")
+print(f"Specificity: {specificity:.4f}")
 
 #ROC code
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score
@@ -212,3 +218,4 @@ plt.ylabel("True Positive Rate")
 plt.title("ROC curve")
 plt.legend()
 plt.show()
+# %%
