@@ -114,13 +114,19 @@ for clf_name, clf in classifiers.items():
 
         if clf_name == 'Logistic Regression':
             param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
+            param_grid['classifier__penalty'] = ['l2']
 
         elif clf_name == 'Random Forest':
             param_grid['classifier__n_estimators'] = [50, 100, 200]
             param_grid['classifier__max_depth'] = [None, 5, 10]
+            param_grid['classifier__min_samples_split'] = [2, 5]
+            param_grid['classifier__min_samples_leaf'] = [1, 2, 5]
+            param_grid['classifier__max_features'] = ['sqrt', 'log2']   
 
         elif clf_name == 'SVM':
+            param_grid['classifier__kernel'] = ['rbf']
             param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
+            param_grid['classifier__gamma'] = ['scale', 0.001, 0.01, 0.1]
 
         if selector_name == 'Mann-Whitney U':
             param_grid['feature_selection__k'] = [5, 10, 15, 20]
