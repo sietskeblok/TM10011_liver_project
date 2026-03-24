@@ -117,6 +117,8 @@ for result in results:
 # Importeren modules
 import numpy as np
 import pandas as pd
+import joblib
+import matplotlib.pyplot as plt
 from scipy.stats import mannwhitneyu
 
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -128,12 +130,14 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import make_scorer, fbeta_score
 
 X_train = pd.read_pickle("X_train.pkl")
 X_test = pd.read_pickle("X_test.pkl")
 y_train = pd.read_pickle("y_train.pkl")
 y_test = pd.read_pickle("y_test.pkl")
 
+fbeta = make_scorer(fbeta_score, beta=2)
 
 #correlatiefilter
 class CorrelationFilter(BaseEstimator, TransformerMixin):
@@ -187,9 +191,9 @@ feature_selectors = {
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
         estimator=RandomForestClassifier(random_state=42),
-        step=30, #deze moeten omlaag
+        step=40, #deze moeten omlaag
         cv=4,
-        scoring='accuracy'
+        scoring=fbeta
     )
 }
 
@@ -201,9 +205,11 @@ inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moe
 results = []
 
 best_score = -np.inf
+best_std = None
 best_grid = None
 best_name = None
 
+all_outer_scores = {}
 
 # Nested CV loop maken
 for clf_name, clf in classifiers.items():
@@ -245,7 +251,7 @@ for clf_name, clf in classifiers.items():
             pipeline,
             param_grid,
             cv=inner_cv,
-            scoring='accuracy',
+            scoring=fbeta,
             n_jobs=-1
         )
 
@@ -255,20 +261,22 @@ for clf_name, clf in classifiers.items():
             X_train,
             y_train,
             cv=outer_cv,
-            scoring='accuracy',
+            scoring=fbeta,
             n_jobs=-1
         )
 
+        all_outer_scores[(clf_name, selector_name)] = outer_scores
         mean_score = outer_scores.mean()
         std_score = outer_scores.std()
 
-        print(f"Outer CV accuracy: {mean_score:.4f} ± {std_score:.4f}")
+        print(f"Outer CV f2-score: {mean_score:.4f} ± {std_score:.4f}")
 
         results.append((clf_name, selector_name, mean_score, std_score))
 
         # Beste model bewaren
         if mean_score > best_score:
             best_score = mean_score
+            best_std = std_score
             best_grid = grid
             best_name = (clf_name, selector_name)
 
@@ -281,12 +289,9 @@ for result in results:
 
 # Beste model opnieuw fitten op hele trainingsset, want je hebt nog niet getrained op de hele trainset
 best_grid.fit(X_train, y_train)
-# %%
 #grid opslaan 
-import joblib
 joblib.dump(best_grid, "best_model.pkl")
 # %%
-best_grid = joblib.load("best_model.pkl")
 # Op testset testen
 y_pred = best_grid.predict(X_test)
 
@@ -298,18 +303,25 @@ accuracy = accuracy_score(y_test, y_pred)
 # Confusion matrix → haalt TN, FP, FN, TP eruit
 tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
 
+fbeta_test = fbeta_score(y_test, y_pred, beta=2)
+# Sensitiviteit en specificiteit berekenen
+sensitivity = tp / (tp + fn)  # Sensitiviteit
+specificity = tn / (tn + fp)  # Specificiteit
+
 print("\nTest set performance:")
+print(f"F2-score: {fbeta_test:.4f}")
 print(f"Accuracy: {accuracy:.4f}")
 print(f"False Positives (benign → malignant): {fp}")
 print(f"False Negatives (malignant → benign): {fn}")
+print(f"Sensitivity (Recall): {sensitivity:.4f}")
+print(f"Specificity: {specificity:.4f}")
 
 
 # %%
 #ROC code
-from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score
+from sklearn.metrics import roc_curve, roc_auc_score
 import matplotlib.pyplot as plt
 
-#print(best_grid)
 y_proba = best_grid.predict_proba(X_test)[:, 1]
 
 fpr, tpr, _ = roc_curve(y_test, y_proba)
@@ -320,6 +332,33 @@ plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
 plt.plot([0, 1], [0, 1], linestyle='--')
 plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate")
-plt.title("ROC curve")
+plt.title(f"ROC curve\nNested CV accuracy = {best_score:.2f} ± {best_std:.2f}")
 plt.legend()
 plt.show()
+
+# %%
+#boxplot
+'''scores = cross_val_score(best_grid.best_estimator_, X_train, y_train, cv=5)
+
+plt.figure()
+plt.boxplot(scores)
+plt.title("Cross-validation accuracy")
+plt.ylabel("Accuracy")
+plt.show()
+'''
+
+labels = []
+score_data = []
+
+for (clf_name, selector_name), scores in all_outer_scores.items():
+    labels.append(f"{clf_name}\n+ {selector_name}")
+    score_data.append(scores)
+
+plt.figure(figsize=(10, 6))
+plt.boxplot(score_data, tick_labels=labels)
+plt.ylabel("F2-score")
+plt.title("Cross-validation accuracy for all model combinations")
+plt.xticks(rotation=20, ha='right')
+plt.tight_layout()
+plt.show()
+# %%
