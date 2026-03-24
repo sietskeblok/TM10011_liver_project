@@ -17,6 +17,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.metrics import make_scorer, fbeta_score
 from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score
+from sklearn.metrics import ConfusionMatrixDisplay
 
 
 X_train = pd.read_pickle("X_train.pkl")
@@ -227,4 +228,17 @@ plt.ylabel("F2-score")
 plt.title("Cross-validation F2-score for all model combinations")
 plt.xticks(rotation=20, ha='right')
 plt.tight_layout()
+plt.show()
+
+#confusion matrix
+ConfusionMatrixDisplay.from_estimator(
+    best_grid,
+    X_test,
+    y_test,
+    display_labels=["Benign", "Malignant"],
+    cmap="Blues",
+    normalize='true'
+)
+
+plt.title("Confusion Matrix (Normalized)")
 plt.show()
