@@ -1,4 +1,3 @@
-# Importeren modules
 import numpy as np
 import pandas as pd
 from scipy.stats import mannwhitneyu
@@ -12,18 +11,16 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
-from sklearn.metrics import make_scorer, fbeta_score
 
 X_train = pd.read_pickle("X_train.pkl")
 X_test = pd.read_pickle("X_test.pkl")
 y_train = pd.read_pickle("y_train.pkl")
 y_test = pd.read_pickle("y_test.pkl")
 
-f2_scorer = make_scorer(fbeta_score, beta=2)
 
 #correlatiefilter
 class CorrelationFilter(BaseEstimator, TransformerMixin):
-    def __init__(self, threshold=0.95):
+    def _init_(self, threshold=0.95):
         self.threshold = threshold
         self.to_drop_ = None
         self.columns_ = None
@@ -43,6 +40,8 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
         X.columns = self.columns_
         return X.drop(columns=self.to_drop_, errors='ignore')
 
+
+
 # Mann-Whitney U feature selectie definitie
 def mannwhitneyu_test(X, y):
     X = np.asarray(X)
@@ -55,6 +54,8 @@ def mannwhitneyu_test(X, y):
 
     return -np.array(p_values)  # lagere p = hogere score
 
+
+
 # Verschillende classifiers in ons model
 classifiers = {
     'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
@@ -62,96 +63,132 @@ classifiers = {
     'SVM': SVC(kernel='linear', probability=True) #dit nog aanpassen naar polynoom?
 }
 
+
+
 # Feature selectie modellen
 feature_selectors = {
-    'None': None,
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
         estimator=RandomForestClassifier(random_state=42),
-        step=30,
-        cv=4,
-        scoring=f2_scorer
+        step=30, #deze moeten omlaag
+        cv=3,
+        scoring='accuracy'
     )
 }
+
 
 # Cross-validation
 outer_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
 inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
 
-results = []
+from sklearn.model_selection import RandomizedSearchCV, cross_val_score
+from scipy.stats import loguniform, randint
+from joblib import Memory
 
-best_score = -np.inf
+# Create a cache folder for the pipeline
+cachedir = './pipeline_cache'
+memory = Memory(cachedir, verbose=0)
+
+results = []
+best_score = 0
 best_grid = None
 best_name = None
 
-# Nested CV loop maken
+# Nested CV loop
 for clf_name, clf in classifiers.items():
     for selector_name, selector in feature_selectors.items():
 
         print(f"\nEvaluating {clf_name} with {selector_name}")
 
-        #Pipeline opbouwen
-        steps = [
+        # Pipeline with caching
+        pipeline = Pipeline([
             ('variance', VarianceThreshold(threshold=0.0)),
             ('correlation', CorrelationFilter(threshold=0.95)),
-            ('scaler', RobustScaler()), 
+            ('scaler', RobustScaler()),
             ('feature_selection', selector),
-            ('classifier', clf) 
-        ]
+            ('classifier', clf)
+        ])
 
-        pipeline = Pipeline(steps)
+        param_dist = {}
 
-        # Hyperparameters
-        param_grid = {}
-
+        # Logistic Regression
+        # Logistic Regression
         if clf_name == 'Logistic Regression':
-            param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
+            clf.set_params(
+                solver='saga',       # saga supports elasticnet (L1/L2)
+                max_iter=5000        # helps convergence
+            )
+            param_dist['classifier__C'] = loguniform(1e-3, 1e2)
+            param_dist['classifier__l1_ratio'] = [0, 1]  # 0=L2, 1=L1
 
+        # Random Forest (expanded core parameters)
         elif clf_name == 'Random Forest':
-            param_grid['classifier__n_estimators'] = [50, 100, 200]
-            param_grid['classifier__max_depth'] = [None, 5, 10]
+            param_dist = {
+                'classifier__n_estimators': [200, 300, 400, 500],
+                'classifier__max_depth': [None, 10, 15, 20],
+                'classifier__min_samples_split': [2, 3, 5],
+                'classifier__min_samples_leaf': [1, 2, 3],
+                'classifier__max_features': [None, 'sqrt', 'log2']
+            }
 
+        # SVM
         elif clf_name == 'SVM':
-            param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
+            param_dist = [
+                {   # Linear kernel
+                    'classifier__kernel': ['linear'],
+                    'classifier__C': loguniform(1e-3, 1e2)
+                },
+                {   # RBF kernel
+                    'classifier__kernel': ['rbf'],
+                    'classifier__C': loguniform(1e-3, 1e2),
+                    'classifier__gamma': ['scale', 'auto', 0.001, 0.01, 0.1]
+                }
+            ]
 
+        # Mann-Whitney: tune number of features
         if selector_name == 'Mann-Whitney U':
-            param_grid['feature_selection__k'] = [5, 10, 15, 20]
+            param_dist['feature_selection__k'] = [5, 10, 15, 20]
 
-        # GridSearch
-        grid = GridSearchCV(
+        # Random search (inner loop)
+        random_search = RandomizedSearchCV(
             pipeline,
-            param_grid,
+            param_distributions=param_dist,
+            n_iter=25,  # number of random combinations
             cv=inner_cv,
-            scoring=f2_scorer,
-            n_jobs=-1
+            scoring='accuracy',
+            n_jobs=-1,
+            random_state=42
         )
 
         # Outer CV
         outer_scores = cross_val_score(
-            grid,
+            random_search,
             X_train,
             y_train,
             cv=outer_cv,
-            scoring=f2_scorer,
+            scoring='accuracy',
             n_jobs=-1
         )
 
         mean_score = outer_scores.mean()
         std_score = outer_scores.std()
 
-        print(f"Outer CV F2-score: {mean_score:.4f} ± {std_score:.4f}")
+        print(f"Outer CV accuracy: {mean_score:.4f} ± {std_score:.4f}")
 
         results.append((clf_name, selector_name, mean_score, std_score))
 
+        # Save best model
         if mean_score > best_score:
             best_score = mean_score
-            best_grid = grid
+            best_grid = random_search
             best_name = (clf_name, selector_name)
+
 
 # Resultaten nested CV
 print("\nFinal Results (Nested CV):")
 for result in results:
     print(f"{result[0]} with {result[1]}: Mean = {result[2]:.4f}, Std = {result[3]:.4f}")
+
 
 # Beste model opnieuw fitten op hele trainingsset, want je hebt nog niet getrained op de hele trainset
 best_grid.fit(X_train, y_train)
@@ -166,26 +203,19 @@ y_pred = best_grid.predict(X_test)
 
 print("\nBest model:")
 print(f"{best_name[0]} with {best_name[1]}")
-
-# Accuracy and f2-score 
+# Accuracy
 accuracy = accuracy_score(y_test, y_pred)
-f2 = fbeta_score(y_test, y_pred, beta=2)
 
 # Confusion matrix → haalt TN, FP, FN, TP eruit
 tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
-
-# Sensitiviteit en specificiteit berekenen
-sensitivity = tp / (tp + fn)  # Sensitiviteit
-specificity = tn / (tn + fp)  # Specificiteit
 
 print("\nTest set performance:")
 print(f"Accuracy: {accuracy:.4f}")
 print(f"False Positives (benign → malignant): {fp}")
 print(f"False Negatives (malignant → benign): {fn}")
-print(f"F2-score: {f2:.4f}")
-print(f"Sensitivity (Recall): {sensitivity:.4f}")
-print(f"Specificity: {specificity:.4f}")
 
+
+# %%
 #ROC code
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score
 import matplotlib.pyplot as plt
@@ -204,4 +234,3 @@ plt.ylabel("True Positive Rate")
 plt.title("ROC curve")
 plt.legend()
 plt.show()
-# %%
