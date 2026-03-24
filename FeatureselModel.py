@@ -174,6 +174,10 @@ y_pred = best_grid.predict(X_test)
 print("\nBest model:")
 print(f"{best_name[0]} with {best_name[1]}")
 
+print("\nBest hyperparameters:")
+for param, value in best_grid.best_params_.items():
+    print(f"{param}: {value}")
+    
 # Accuracy and f2-score 
 accuracy = accuracy_score(y_test, y_pred)
 f2 = fbeta_score(y_test, y_pred, beta=2)
@@ -205,7 +209,7 @@ plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
 plt.plot([0, 1], [0, 1], linestyle='--')
 plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate")
-plt.title(f"ROC curve\nNested CV accuracy = {best_score:.2f} ± {best_std:.2f}")
+plt.title(f"ROC curve\nNested CV F2-score = {best_score:.2f} ± {best_std:.2f}")
 plt.legend()
 plt.show()
 # %%
