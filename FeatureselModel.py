@@ -112,7 +112,7 @@ print("\nFinal Results (Nested CV):")
 for result in results:
     print(f"{result[0]} with {result[1]}: Mean = {result[2]:.4f}, Std = {result[3]:.4f}")
 '''
-
+# %%
 #POGING 2, HIER STAAT PREPROCESSING WEL IN DE NESTED CV
 # Importeren modules
 import numpy as np
@@ -128,12 +128,14 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import make_scorer, fbeta_score
 
 X_train = pd.read_pickle("X_train.pkl")
 X_test = pd.read_pickle("X_test.pkl")
 y_train = pd.read_pickle("y_train.pkl")
 y_test = pd.read_pickle("y_test.pkl")
 
+f2_scorer = make_scorer(fbeta_score, beta=2)
 
 #correlatiefilter
 class CorrelationFilter(BaseEstimator, TransformerMixin):
@@ -189,10 +191,9 @@ feature_selectors = {
         estimator=RandomForestClassifier(random_state=42),
         step=30, #deze moeten omlaag
         cv=4,
-        scoring='accuracy'
+        scoring=f2_scorer
     )
 }
-
 
 # Cross-validation
 outer_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
@@ -245,7 +246,7 @@ for clf_name, clf in classifiers.items():
             pipeline,
             param_grid,
             cv=inner_cv,
-            scoring='accuracy',
+            scoring=f2_scorer,
             n_jobs=-1
         )
 
@@ -255,14 +256,14 @@ for clf_name, clf in classifiers.items():
             X_train,
             y_train,
             cv=outer_cv,
-            scoring='accuracy',
+            scoring=f2_scorer,
             n_jobs=-1
         )
 
         mean_score = outer_scores.mean()
         std_score = outer_scores.std()
 
-        print(f"Outer CV accuracy: {mean_score:.4f} ± {std_score:.4f}")
+        print(f"Outer CV F2-score: {mean_score:.4f} ± {std_score:.4f}")
 
         results.append((clf_name, selector_name, mean_score, std_score))
 
@@ -292,8 +293,10 @@ y_pred = best_grid.predict(X_test)
 
 print("\nBest model:")
 print(f"{best_name[0]} with {best_name[1]}")
-# Accuracy
+
+# Accuracy and f2-score 
 accuracy = accuracy_score(y_test, y_pred)
+f2 = fbeta_score(y_test, y_pred, beta=2)
 
 # Confusion matrix → haalt TN, FP, FN, TP eruit
 tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
@@ -302,6 +305,7 @@ print("\nTest set performance:")
 print(f"Accuracy: {accuracy:.4f}")
 print(f"False Positives (benign → malignant): {fp}")
 print(f"False Negatives (malignant → benign): {fn}")
+print(f"F2-score: {f2:.4f}")
 
 
 # %%
