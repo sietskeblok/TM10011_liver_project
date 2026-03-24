@@ -124,9 +124,17 @@ for clf_name, clf in classifiers.items():
             param_grid['classifier__max_features'] = ['sqrt', 'log2']   
 
         elif clf_name == 'SVM':
-            param_grid['classifier__kernel'] = ['rbf']
-            param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
-            param_grid['classifier__gamma'] = ['scale', 0.001, 0.01, 0.1]
+            param_grid = [ 
+                {
+                    'classifier__kernel': ['linear'],
+                    'classifier__C': [0.01, 0.1, 1, 10]
+                },
+                 {
+                    'classifier__kernel': ['rbf'],
+                    'classifier__C': [0.01, 0.1, 1, 10],
+                    'classifier__gamma': ['scale', 0.001, 0.01, 0.1]
+                }
+            ]
 
         if selector_name == 'Mann-Whitney U':
             param_grid['feature_selection__k'] = [5, 10, 15, 20]
