@@ -1,6 +1,8 @@
 # Importeren modules
 import numpy as np
 import pandas as pd
+import joblib
+import matplotlib.pyplot as plt
 from scipy.stats import mannwhitneyu
 
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -13,6 +15,9 @@ from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 from sklearn.metrics import make_scorer, fbeta_score
+from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score
+
 
 X_train = pd.read_pickle("X_train.pkl")
 X_test = pd.read_pickle("X_test.pkl")
@@ -68,7 +73,7 @@ feature_selectors = {
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
         estimator=RandomForestClassifier(random_state=42),
-        step=30,
+        step=30, #steps moeten omlaag naar 1 eigenlijk
         cv=4,
         scoring=f2_scorer
     )
@@ -81,8 +86,10 @@ inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moe
 results = []
 
 best_score = -np.inf
+best_std = None
 best_grid = None
 best_name = None
+all_outer_scores = {}
 
 # Nested CV loop maken
 for clf_name, clf in classifiers.items():
@@ -136,6 +143,7 @@ for clf_name, clf in classifiers.items():
             n_jobs=-1
         )
 
+        all_outer_scores[(clf_name, selector_name)] = outer_scores
         mean_score = outer_scores.mean()
         std_score = outer_scores.std()
 
@@ -145,6 +153,7 @@ for clf_name, clf in classifiers.items():
 
         if mean_score > best_score:
             best_score = mean_score
+            best_std = std_score
             best_grid = grid
             best_name = (clf_name, selector_name)
 
@@ -157,10 +166,8 @@ for result in results:
 best_grid.fit(X_train, y_train)
 # %%
 #grid opslaan 
-import joblib
 joblib.dump(best_grid, "best_model.pkl")
 # %%
-best_grid = joblib.load("best_model.pkl")
 # Op testset testen
 y_pred = best_grid.predict(X_test)
 
@@ -186,11 +193,8 @@ print(f"F2-score: {f2:.4f}")
 print(f"Sensitivity (Recall): {sensitivity:.4f}")
 print(f"Specificity: {specificity:.4f}")
 
-#ROC code
-from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score
-import matplotlib.pyplot as plt
 
-#print(best_grid)
+#ROC code
 y_proba = best_grid.predict_proba(X_test)[:, 1]
 
 fpr, tpr, _ = roc_curve(y_test, y_proba)
@@ -201,7 +205,22 @@ plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
 plt.plot([0, 1], [0, 1], linestyle='--')
 plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate")
-plt.title("ROC curve")
+plt.title(f"ROC curve\nNested CV accuracy = {best_score:.2f} ± {best_std:.2f}")
 plt.legend()
 plt.show()
 # %%
+#boxplot
+labels = []
+score_data = []
+
+for (clf_name, selector_name), scores in all_outer_scores.items():
+    labels.append(f"{clf_name}\n+ {selector_name}")
+    score_data.append(scores)
+
+plt.figure(figsize=(10, 6))
+plt.boxplot(score_data, tick_labels=labels)
+plt.ylabel("F2-score")
+plt.title("Cross-validation F2-score for all model combinations")
+plt.xticks(rotation=20, ha='right')
+plt.tight_layout()
+plt.show()
