@@ -1,119 +1,3 @@
-#from assignment import X_train, y_train
-
-
-#HIER STAAT PREPROCESSING NOG NIET IN DE NESTED CV
-# Importeren modules
-'''import numpy as np
-import pandas as pd
-from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV
-from sklearn.feature_selection import RFECV, SelectKBest
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import RobustScaler
-from scipy.stats import mannwhitneyu
-from sklearn.svm import SVC
-
-X_train = pd.read_pickle("X_train_filtered_scaled.pkl")
-X_test = pd.read_pickle("X_test_filtered_scaled.pkl")
-y_train = pd.read_pickle("y_train.pkl")
-y_test = pd.read_pickle("y_test.pkl")
-#print(y_train.dtype)
-# Mann Whitney-U feature selectie
-def mannwhitneyu_test(X, y):
-    p_values = []
-    for i in range(X.shape[1]):
-        stat, p_value = mannwhitneyu(X[:, i][y == 0], X[:, i][y == 1])
-        p_values.append(p_value)
-    return -np.array(p_values)  # lagere p = hogere score
-
-# Verschillende classifiers
-classifiers = {
-    'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
-    'Random Forest': RandomForestClassifier(random_state=42),
-    'SVM': SVC(kernel='linear')
-}
-
-# Feature selectie
-feature_selectors = {
-    'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
-    'RFECV': RFECV(
-        estimator=RandomForestClassifier(random_state=42),
-        step=30,
-        cv=4,
-        scoring='accuracy'
-    )
-}
-
-# Cross validation
-outer_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
-inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
-
-results = []
-
-# For loop voor feature selectie, classifier, hyperparameter tuning en validatie
-for clf_name, clf in classifiers.items():
-    for selector_name, selector in feature_selectors.items():
-
-        print(f"\nEvaluating {clf_name} with {selector_name}")
-
-        # pipeline
-        pipeline = Pipeline([
-            #('scaler', RobustScaler()), #dit moet er nog uit
-            ('feature_selection', selector),
-            ('classifier', clf)
-        ])
-
-        # Hyperparameters per classifier
-        param_grid = {}
-
-        # Logistic Regression
-        if clf_name == 'Logistic Regression':
-            param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
-
-        # Random Forest
-        elif clf_name == 'Random Forest':
-            param_grid['classifier__n_estimators'] = [50, 100, 200]
-            param_grid['classifier__max_depth'] = [None, 5, 10]
-
-        # SVM
-        elif clf_name == 'SVM':
-            param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
-
-        # Mann-Whitney: aantal features tunen
-        if selector_name == 'Mann-Whitney U':
-            param_grid['feature_selection__k'] = [5, 10, 15, 20]
-
-        # Grid search (inner loop)
-        grid = GridSearchCV(
-            pipeline,
-            param_grid,
-            cv=inner_cv,
-            scoring='accuracy',
-            n_jobs=-1
-        )
-
-        # Outer loop
-        outer_scores = cross_val_score(
-            grid,
-            X_train,
-            y_train,
-            cv=outer_cv,
-            scoring='accuracy',
-            n_jobs=-1
-        )
-
-        print(f"Outer CV accuracy: {outer_scores.mean():.4f} ± {outer_scores.std():.4f}")
-
-        results.append((clf_name, selector_name, outer_scores.mean(), outer_scores.std()))
-
-# Print resultaten
-print("\nFinal Results (Nested CV):")
-for result in results:
-    print(f"{result[0]} with {result[1]}: Mean = {result[2]:.4f}, Std = {result[3]:.4f}")
-'''
-
-#POGING 2, HIER STAAT PREPROCESSING WEL IN DE NESTED CV
 # Importeren modules
 import numpy as np
 import pandas as pd
@@ -130,6 +14,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import make_scorer, fbeta_score
 from sklearn.metrics import make_scorer, fbeta_score
 
 X_train = pd.read_pickle("X_train.pkl")
@@ -161,8 +46,6 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
         X.columns = self.columns_
         return X.drop(columns=self.to_drop_, errors='ignore')
 
-
-
 # Mann-Whitney U feature selectie definitie
 def mannwhitneyu_test(X, y):
     X = np.asarray(X)
@@ -175,8 +58,6 @@ def mannwhitneyu_test(X, y):
 
     return -np.array(p_values)  # lagere p = hogere score
 
-
-
 # Verschillende classifiers in ons model
 classifiers = {
     'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
@@ -184,10 +65,9 @@ classifiers = {
     'SVM': SVC(kernel='linear', probability=True) #dit nog aanpassen naar polynoom?
 }
 
-
-
 # Feature selectie modellen
 feature_selectors = {
+    'None': None,
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
         estimator=RandomForestClassifier(random_state=42),
@@ -196,7 +76,6 @@ feature_selectors = {
         scoring=fbeta
     )
 }
-
 
 # Cross-validation
 outer_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
@@ -217,36 +96,35 @@ for clf_name, clf in classifiers.items():
 
         print(f"\nEvaluating {clf_name} with {selector_name}")
 
-        # Pipeline met preprocessing BINNEN de CV-loop
-        pipeline = Pipeline([
+        #Pipeline opbouwen
+        steps = [
             ('variance', VarianceThreshold(threshold=0.0)),
             ('correlation', CorrelationFilter(threshold=0.95)),
-            ('scaler', RobustScaler()),
+            ('scaler', RobustScaler()), 
             ('feature_selection', selector),
-            ('classifier', clf)
-        ])
+            ('classifier', clf) 
+        ]
 
-        # Hyperparameters per classifier
+        pipeline = Pipeline(steps)
+
+        # Hyperparameters
         param_grid = {}
 
-        # Logistic Regression
         if clf_name == 'Logistic Regression':
             param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
 
-        # Random Forest
         elif clf_name == 'Random Forest':
             param_grid['classifier__n_estimators'] = [50, 100, 200]
             param_grid['classifier__max_depth'] = [None, 5, 10]
 
-        # SVM
         elif clf_name == 'SVM':
             param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
 
-        # Mann-Whitney: aantal features tunen
+        # 👉 Alleen k tunen als feature selection actief is
         if selector_name == 'Mann-Whitney U':
             param_grid['feature_selection__k'] = [5, 10, 15, 20]
 
-        # Grid search (inner loop)
+        # GridSearch
         grid = GridSearchCV(
             pipeline,
             param_grid,
@@ -255,7 +133,7 @@ for clf_name, clf in classifiers.items():
             n_jobs=-1
         )
 
-        # Outer loop
+        # Outer CV
         outer_scores = cross_val_score(
             grid,
             X_train,
@@ -273,19 +151,16 @@ for clf_name, clf in classifiers.items():
 
         results.append((clf_name, selector_name, mean_score, std_score))
 
-        # Beste model bewaren
         if mean_score > best_score:
             best_score = mean_score
             best_std = std_score
             best_grid = grid
             best_name = (clf_name, selector_name)
 
-
 # Resultaten nested CV
 print("\nFinal Results (Nested CV):")
 for result in results:
     print(f"{result[0]} with {result[1]}: Mean = {result[2]:.4f}, Std = {result[3]:.4f}")
-
 
 # Beste model opnieuw fitten op hele trainingsset, want je hebt nog niet getrained op de hele trainset
 best_grid.fit(X_train, y_train)
@@ -297,8 +172,10 @@ y_pred = best_grid.predict(X_test)
 
 print("\nBest model:")
 print(f"{best_name[0]} with {best_name[1]}")
-# Accuracy
+
+# Accuracy and f2-score 
 accuracy = accuracy_score(y_test, y_pred)
+f2 = fbeta_score(y_test, y_pred, beta=2)
 
 # Confusion matrix → haalt TN, FP, FN, TP eruit
 tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
@@ -317,7 +194,6 @@ print(f"Sensitivity (Recall): {sensitivity:.4f}")
 print(f"Specificity: {specificity:.4f}")
 
 
-# %%
 #ROC code
 from sklearn.metrics import roc_curve, roc_auc_score
 import matplotlib.pyplot as plt
