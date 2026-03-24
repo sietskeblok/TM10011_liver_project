@@ -114,7 +114,7 @@ for clf_name, clf in classifiers.items():
         elif clf_name == 'SVM':
             param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
 
-        # 👉 Alleen k tunen als feature selection actief is
+        # Alleen k tunen als feature selection actief is
         if selector_name == 'Mann-Whitney U':
             param_grid['feature_selection__k'] = [5, 10, 15, 20]
 
