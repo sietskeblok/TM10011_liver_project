@@ -88,29 +88,16 @@ best_name = None
 for clf_name, clf in classifiers.items():
     for selector_name, selector in feature_selectors.items():
 
-        # 👉 Skip feature selection voor Random Forest
-        #if clf_name == 'Random Forest':
-        #    if selector_name != 'None':
-        #       continue  # sla combinaties over
-
         print(f"\nEvaluating {clf_name} with {selector_name}")
 
-        # 👉 Pipeline opbouwen
+        #Pipeline opbouwen
         steps = [
             ('variance', VarianceThreshold(threshold=0.0)),
             ('correlation', CorrelationFilter(threshold=0.95)),
+            ('scaler', RobustScaler()), 
+            ('feature_selection', selector),
+            ('classifier', clf) 
         ]
-
-        # 👉 Scaling alleen voor niet-RF modellen
-        if clf_name != 'Random Forest':
-            steps.append(('scaler', RobustScaler()))
-
-        # 👉 Feature selection alleen als die er is
-        if selector_name != 'None':
-            steps.append(('feature_selection', selector))
-
-        # 👉 Classifier toevoegen
-        steps.append(('classifier', clf))
 
         pipeline = Pipeline(steps)
 
