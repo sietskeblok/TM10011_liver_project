@@ -26,7 +26,7 @@ X_test = pd.read_pickle("X_test.pkl")
 y_train = pd.read_pickle("y_train.pkl")
 y_test = pd.read_pickle("y_test.pkl")
 
-f2_scorer = make_scorer(fbeta_score, beta=2)
+f2_scorer = make_scorer(fbeta_score, beta=1.5)
 
 #correlatiefilter
 class CorrelationFilter(BaseEstimator, TransformerMixin):
@@ -118,11 +118,11 @@ for clf_name, clf in classifiers.items():
             param_grid['classifier__penalty'] = ['l2']
 
         elif clf_name == 'Random Forest':
-            param_grid['classifier__n_estimators'] = [50, 100, 200]
+            param_grid['classifier__n_estimators'] = [50, 100, 200, 300]
             param_grid['classifier__max_depth'] = [None, 5, 10]
             param_grid['classifier__min_samples_split'] = [2, 5]
             param_grid['classifier__min_samples_leaf'] = [1, 2, 5]
-            param_grid['classifier__max_features'] = ['sqrt', 'log2']   
+            param_grid['classifier__max_features'] = [None,'sqrt', 'log2']   
 
         elif clf_name == 'SVM':
             param_grid = [ 
@@ -221,6 +221,8 @@ joblib.dump(best_grid, "best_model.pkl")
 # %%
 # Op testset testen
 y_pred = best_grid.predict(X_test)
+#y_proba = best_grid.predict_proba(X_test)[:, 1]
+#y_pred = (y_proba > 0.6).astype(int)
 
 print("\nBest model:")
 print(f"{best_name[0]} with {best_name[1]}")
