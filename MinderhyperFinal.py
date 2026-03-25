@@ -20,6 +20,9 @@ from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import learning_curve
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 X_train = pd.read_pickle("X_train.pkl")
 X_test = pd.read_pickle("X_test.pkl")
 y_train = pd.read_pickle("y_train.pkl")
@@ -65,7 +68,7 @@ def mannwhitneyu_test(X, y):
 classifiers = {
     'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
     'Random Forest': RandomForestClassifier(random_state=42),
-    'sVM_rbf': SVC(kernel='rbf', gamma='scale', probability=True)}
+    'SVM': SVC(kernel='rbf', gamma='scale', probability=True)}
 
 # Feature selectie modellen
 feature_selectors = {
@@ -110,17 +113,19 @@ for clf_name, clf in classifiers.items():
         # Hyperparameters per classifier
         param_grid = {}
 
-        # Logistic Regression
         if clf_name == 'Logistic Regression':
             param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
 
-        # Random Forest
         elif clf_name == 'Random Forest':
             param_grid['classifier__n_estimators'] = [50, 100, 200]
             param_grid['classifier__max_depth'] = [None, 5, 10]
+            param_grid['classifier__min_samples_split'] = [2, 5, 10]
+            param_grid['classifier__min_samples_leaf'] = [1, 2, 4]
 
-        elif clf_name == 'SVM_rbf':
-            param_grid = {}  # geen hyperparameters om te tunen
+        elif clf_name == 'SVM':
+            param_grid = {
+                'classifier__C': [0.1, 1, 10]
+            }
 
         if selector_name == 'Mann-Whitney U':
             if isinstance(param_grid, list):
