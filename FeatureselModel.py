@@ -1,4 +1,6 @@
 # Importeren modules
+import warnings
+
 import numpy as np
 import pandas as pd
 import joblib
@@ -6,6 +8,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import mannwhitneyu
 
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.calibration import LinearSVC
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, GridSearchCV
 from sklearn.feature_selection import RFECV, SelectKBest, VarianceThreshold
 from sklearn.linear_model import LogisticRegression
@@ -20,13 +23,9 @@ from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import learning_curve
 
+warnings.filterwarnings("ignore") 
 
-X_train = pd.read_pickle("X_train.pkl")
-X_test = pd.read_pickle("X_test.pkl")
-y_train = pd.read_pickle("y_train.pkl")
-y_test = pd.read_pickle("y_test.pkl")
 
-f2_scorer = make_scorer(fbeta_score, beta=1.5)
 
 #correlatiefilter
 class CorrelationFilter(BaseEstimator, TransformerMixin):
@@ -50,6 +49,19 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
         X.columns = self.columns_
         return X.drop(columns=self.to_drop_, errors='ignore')
 
+X_train = pd.read_pickle("X_train.pkl")
+X_test = pd.read_pickle("X_test.pkl")
+y_train = pd.read_pickle("y_train.pkl")
+y_test = pd.read_pickle("y_test.pkl")
+
+f2_scorer = make_scorer(fbeta_score, beta=2)
+
+corr_filter = CorrelationFilter(threshold=0.95)
+corr_filter.fit(X_train)
+X_filtered = corr_filter.transform(X_train)
+
+print(X_train.shape)
+print(X_filtered.shape)
 # Mann-Whitney U feature selectie definitie
 def mannwhitneyu_test(X, y):
     X = np.asarray(X)
@@ -66,7 +78,8 @@ def mannwhitneyu_test(X, y):
 classifiers = {
     'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
     'Random Forest': RandomForestClassifier(random_state=42),
-    'SVM': SVC(kernel='linear', probability=True) #dit nog aanpassen naar polynoom?
+    'rbfSVM': SVC(kernel='rbf', probability=True),
+    'linearSVM': SVC(kernel='linear', probability=True)  #dit nog aanpassen naar polynoom?
 }
 
 # Feature selectie modellen
@@ -74,16 +87,16 @@ feature_selectors = {
     'None': None,
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
-        estimator=RandomForestClassifier(random_state=42),
-        step=40, #steps moeten omlaag naar 1 eigenlijk
+        estimator=LinearSVC(random_state=42),
+        step=5, #steps moeten omlaag naar 1 eigenlijk
         cv=4,
         scoring=f2_scorer
     )
 }
 
 # Cross-validation
-outer_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
-inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
+outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42) #folds moeten omhoog
+inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42) #folds moeten omhoog
 
 results = []
 
@@ -119,30 +132,17 @@ for clf_name, clf in classifiers.items():
 
         elif clf_name == 'Random Forest':
             param_grid['classifier__n_estimators'] = [50, 100, 200, 300]
-            param_grid['classifier__max_depth'] = [None, 5, 10]
-            param_grid['classifier__min_samples_split'] = [2, 5]
-            param_grid['classifier__min_samples_leaf'] = [1, 2, 5]
-            param_grid['classifier__max_features'] = [None,'sqrt', 'log2']   
+            param_grid['classifier__max_depth'] = [None, 5, 10]   
 
-        elif clf_name == 'SVM':
-            param_grid = [ 
-                {
-                    'classifier__kernel': ['linear'],
-                    'classifier__C': [0.01, 0.1, 1, 10]
-                },
-                 {
-                    'classifier__kernel': ['rbf'],
-                    'classifier__C': [0.01, 0.1, 1, 10],
-                    'classifier__gamma': ['scale', 0.001, 0.01, 0.1]
-                }
-            ]
+        elif clf_name == 'linearSVM':
+            param_grid['classifier__C'] =  [0.01, 0.1, 1, 10]
+
+        elif clf_name == 'rbfSVM':
+            param_grid['classifier__C'] =  [0.01, 0.1, 1, 10]
+            param_grid['classifier__gamma'] = ['scale', 'auto']
 
         if selector_name == 'Mann-Whitney U':
-            if isinstance(param_grid, list):
-                for grid in param_grid:
-                    grid['feature_selection__k'] = [5, 10, 15, 20]
-            else:
-                param_grid['feature_selection__k'] = [5, 10, 15, 20]
+            param_grid['feature_selection__k'] = [5, 10, 15, 20]
         
         # GridSearch
         grid = GridSearchCV(
@@ -183,7 +183,9 @@ for result in results:
     print(f"{result[0]} with {result[1]}: Mean = {result[2]:.4f}, Std = {result[3]:.4f}")
 
 # Beste model opnieuw fitten op hele trainingsset, want je hebt nog niet getrained op de hele trainset
+
 best_grid.fit(X_train, y_train)
+
 
 # Learning curve
 train_sizes, train_scores, val_scores = learning_curve(
