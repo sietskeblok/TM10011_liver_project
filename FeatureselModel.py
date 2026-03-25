@@ -54,7 +54,7 @@ X_test = pd.read_pickle("X_test.pkl")
 y_train = pd.read_pickle("y_train.pkl")
 y_test = pd.read_pickle("y_test.pkl")
 
-f2_scorer = make_scorer(fbeta_score, beta=2)
+#f2_scorer = make_scorer(fbeta_score, beta=2)
 
 corr_filter = CorrelationFilter(threshold=0.95)
 corr_filter.fit(X_train)
@@ -78,7 +78,7 @@ def mannwhitneyu_test(X, y):
 classifiers = {
     'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
     'Random Forest': RandomForestClassifier(random_state=42),
-    'rbfSVM': SVC(kernel='rbf', probability=True),
+    #'rbfSVM': SVC(kernel='rbf', probability=True),
     'linearSVM': SVC(kernel='linear', probability=True)  #dit nog aanpassen naar polynoom?
 }
 
@@ -88,15 +88,15 @@ feature_selectors = {
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
         estimator=LinearSVC(random_state=42),
-        step=5, #steps moeten omlaag naar 1 eigenlijk
+        step=10, #steps moeten omlaag naar 1 eigenlijk
         cv=4,
-        scoring=f2_scorer
+        scoring='roc_auc'
     )
 }
 
 # Cross-validation
-outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42) #folds moeten omhoog
-inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42) #folds moeten omhoog
+outer_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
 
 results = []
 
@@ -132,14 +132,15 @@ for clf_name, clf in classifiers.items():
 
         elif clf_name == 'Random Forest':
             param_grid['classifier__n_estimators'] = [50, 100, 200, 300]
-            param_grid['classifier__max_depth'] = [None, 5, 10]   
+            param_grid['classifier__max_depth'] = [None, 5, 10]  
+            param_grid['classifier__max_features'] = ['sqrt', 'log2', 0.2, 0.5] 
 
         elif clf_name == 'linearSVM':
             param_grid['classifier__C'] =  [0.01, 0.1, 1, 10]
 
-        elif clf_name == 'rbfSVM':
+        '''elif clf_name == 'rbfSVM':
             param_grid['classifier__C'] =  [0.01, 0.1, 1, 10]
-            param_grid['classifier__gamma'] = ['scale', 'auto']
+            param_grid['classifier__gamma'] = ['scale', 'auto']'''
 
         if selector_name == 'Mann-Whitney U':
             param_grid['feature_selection__k'] = [5, 10, 15, 20]
@@ -149,7 +150,7 @@ for clf_name, clf in classifiers.items():
             pipeline,
             param_grid,
             cv=inner_cv,
-            scoring=f2_scorer,
+            scoring='roc_auc',
             n_jobs=-1
         )
 
@@ -159,7 +160,7 @@ for clf_name, clf in classifiers.items():
             X_train,
             y_train,
             cv=outer_cv,
-            scoring=f2_scorer,
+            scoring='roc_auc',
             n_jobs=-1
         )
 
@@ -167,7 +168,7 @@ for clf_name, clf in classifiers.items():
         mean_score = outer_scores.mean()
         std_score = outer_scores.std()
 
-        print(f"Outer CV F2-score: {mean_score:.4f} ± {std_score:.4f}")
+        print(f"Outer CV ROC_AUC-score: {mean_score:.4f} ± {std_score:.4f}")
 
         results.append((clf_name, selector_name, mean_score, std_score))
 
@@ -185,7 +186,12 @@ for result in results:
 # Beste model opnieuw fitten op hele trainingsset, want je hebt nog niet getrained op de hele trainset
 
 best_grid.fit(X_train, y_train)
+#paar dingen checken
+print("Classes:", best_grid.classes_)
+print("Unique y_test:", np.unique(y_test, return_counts=True))
 
+y_pred = best_grid.predict(X_test)
+print("Pred distribution:", np.unique(y_pred, return_counts=True))
 
 # Learning curve
 train_sizes, train_scores, val_scores = learning_curve(
@@ -193,7 +199,7 @@ train_sizes, train_scores, val_scores = learning_curve(
     X=X_train,
     y=y_train,
     cv=outer_cv,
-    scoring=f2_scorer,
+    scoring='roc_auc',
     train_sizes=np.linspace(0.1, 1.0, 5),
     n_jobs=-1
 )
@@ -211,7 +217,7 @@ plt.fill_between(train_sizes, train_mean - train_std, train_mean + train_std, al
 plt.fill_between(train_sizes, val_mean - val_std, val_mean + val_std, alpha=0.2)
 
 plt.xlabel("Number of training samples")
-plt.ylabel("F2-score")
+plt.ylabel("ROC_AUC-score")
 plt.title(f"Learning Curve: {best_name[0]} + {best_name[1]}")
 plt.legend(loc='best')
 plt.grid(True)
@@ -233,9 +239,17 @@ print("\nBest hyperparameters:")
 for param, value in best_grid.best_params_.items():
     print(f"{param}: {value}")
     
-# Accuracy and f2-score 
+ 
+# Accuracy
 accuracy = accuracy_score(y_test, y_pred)
-f2 = fbeta_score(y_test, y_pred, beta=2)
+
+# ROC-AUC (belangrijk!)
+if hasattr(best_grid, "decision_function"):
+    y_score = best_grid.decision_function(X_test)
+else:
+    y_score = best_grid.predict_proba(X_test)[:, 1]
+
+roc_auc = roc_auc_score(y_test, y_score)
 
 # Confusion matrix → haalt TN, FP, FN, TP eruit
 tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
@@ -248,7 +262,7 @@ print("\nTest set performance:")
 print(f"Accuracy: {accuracy:.4f}")
 print(f"False Positives (benign → malignant): {fp}")
 print(f"False Negatives (malignant → benign): {fn}")
-print(f"F2-score: {f2:.4f}")
+print(f"ROC_AUC-score: {roc_auc:.4f}")
 print(f"Sensitivity (Recall): {sensitivity:.4f}")
 print(f"Specificity: {specificity:.4f}")
 
@@ -264,7 +278,7 @@ plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
 plt.plot([0, 1], [0, 1], linestyle='--')
 plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate")
-plt.title(f"ROC curve\nNested CV F2-score = {best_score:.2f} ± {best_std:.2f}")
+plt.title(f"ROC curve\nNested CV ROC_AUC-score = {best_score:.2f} ± {best_std:.2f}")
 plt.legend()
 plt.show()
 # %%
@@ -278,8 +292,8 @@ for (clf_name, selector_name), scores in all_outer_scores.items():
 
 plt.figure(figsize=(10, 6))
 plt.boxplot(score_data, tick_labels=labels)
-plt.ylabel("F2-score")
-plt.title("Cross-validation F2-score for all model combinations")
+plt.ylabel("ROC_AUC-score")
+plt.title("Cross-validation ROC_AUC-score for all model combinations")
 plt.xticks(rotation=20, ha='right')
 plt.tight_layout()
 plt.show()
