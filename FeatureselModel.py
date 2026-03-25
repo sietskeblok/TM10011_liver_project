@@ -18,6 +18,7 @@ from sklearn.metrics import make_scorer, fbeta_score
 from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score
 from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.model_selection import learning_curve
 
 
 X_train = pd.read_pickle("X_train.pkl")
@@ -74,7 +75,7 @@ feature_selectors = {
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
         estimator=RandomForestClassifier(random_state=42),
-        step=30, #steps moeten omlaag naar 1 eigenlijk
+        step=40, #steps moeten omlaag naar 1 eigenlijk
         cv=4,
         scoring=f2_scorer
     )
@@ -137,8 +138,12 @@ for clf_name, clf in classifiers.items():
             ]
 
         if selector_name == 'Mann-Whitney U':
-            param_grid['feature_selection__k'] = [5, 10, 15, 20]
-
+            if isinstance(param_grid, list):
+                for grid in param_grid:
+                    grid['feature_selection__k'] = [5, 10, 15, 20]
+            else:
+                param_grid['feature_selection__k'] = [5, 10, 15, 20]
+        
         # GridSearch
         grid = GridSearchCV(
             pipeline,
@@ -179,6 +184,37 @@ for result in results:
 
 # Beste model opnieuw fitten op hele trainingsset, want je hebt nog niet getrained op de hele trainset
 best_grid.fit(X_train, y_train)
+
+# Learning curve
+train_sizes, train_scores, val_scores = learning_curve(
+    estimator=best_grid,
+    X=X_train,
+    y=y_train,
+    cv=outer_cv,
+    scoring=f2_scorer,
+    train_sizes=np.linspace(0.1, 1.0, 5),
+    n_jobs=-1
+)
+
+train_mean = train_scores.mean(axis=1)
+train_std = train_scores.std(axis=1)
+val_mean = val_scores.mean(axis=1)
+val_std = val_scores.std(axis=1)
+
+plt.figure(figsize=(8, 6))
+plt.plot(train_sizes, train_mean, marker='o', label='Training score')
+plt.plot(train_sizes, val_mean, marker='o', label='Validation score')
+
+plt.fill_between(train_sizes, train_mean - train_std, train_mean + train_std, alpha=0.2)
+plt.fill_between(train_sizes, val_mean - val_std, val_mean + val_std, alpha=0.2)
+
+plt.xlabel("Number of training samples")
+plt.ylabel("F2-score")
+plt.title(f"Learning Curve: {best_name[0]} + {best_name[1]}")
+plt.legend(loc='best')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
 # %%
 #grid opslaan 
 joblib.dump(best_grid, "best_model.pkl")
