@@ -23,13 +23,6 @@ from sklearn.model_selection import learning_curve
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-X_train = pd.read_pickle("X_train.pkl")
-X_test = pd.read_pickle("X_test.pkl")
-y_train = pd.read_pickle("y_train.pkl")
-y_test = pd.read_pickle("y_test.pkl")
-
-f2_scorer = make_scorer(fbeta_score, beta=2)
-
 #correlatiefilter
 class CorrelationFilter(BaseEstimator, TransformerMixin):
     def __init__(self, threshold=0.95):
@@ -51,6 +44,21 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
         X = pd.DataFrame(X)
         X.columns = self.columns_
         return X.drop(columns=self.to_drop_, errors='ignore')
+
+X_train = pd.read_pickle("X_train.pkl")
+X_test = pd.read_pickle("X_test.pkl")
+y_train = pd.read_pickle("y_train.pkl")
+y_test = pd.read_pickle("y_test.pkl")
+
+f2_scorer = make_scorer(fbeta_score, beta=2)
+
+# 4. HIER je check
+corr_filter = CorrelationFilter(threshold=0.95)
+corr_filter.fit(X_train)
+X_filtered = corr_filter.transform(X_train)
+
+print(X_train.shape)
+print(X_filtered.shape)
 
 # Mann-Whitney U feature selectie definitie
 def mannwhitneyu_test(X, y):
