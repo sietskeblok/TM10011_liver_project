@@ -1,6 +1,4 @@
 # Importeren modules
-import warnings
-
 import numpy as np
 import pandas as pd
 import joblib
@@ -8,7 +6,6 @@ import matplotlib.pyplot as plt
 from scipy.stats import mannwhitneyu
 
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.calibration import LinearSVC
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, GridSearchCV
 from sklearn.feature_selection import RFECV, SelectKBest, VarianceThreshold
 from sklearn.linear_model import LogisticRegression
@@ -23,9 +20,8 @@ from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import learning_curve
 
-warnings.filterwarnings("ignore") 
-
-
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 #correlatiefilter
 class CorrelationFilter(BaseEstimator, TransformerMixin):
@@ -56,12 +52,14 @@ y_test = pd.read_pickle("y_test.pkl")
 
 f2_scorer = make_scorer(fbeta_score, beta=2)
 
+# 4. HIER je check
 corr_filter = CorrelationFilter(threshold=0.95)
 corr_filter.fit(X_train)
 X_filtered = corr_filter.transform(X_train)
 
 print(X_train.shape)
 print(X_filtered.shape)
+
 # Mann-Whitney U feature selectie definitie
 def mannwhitneyu_test(X, y):
     X = np.asarray(X)
@@ -78,25 +76,23 @@ def mannwhitneyu_test(X, y):
 classifiers = {
     'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
     'Random Forest': RandomForestClassifier(random_state=42),
-    'rbfSVM': SVC(kernel='rbf', probability=True),
-    'linearSVM': SVC(kernel='linear', probability=True)  #dit nog aanpassen naar polynoom?
-}
+    'SVM': SVC(kernel='rbf', gamma='scale', probability=True)}
 
 # Feature selectie modellen
 feature_selectors = {
     'None': None,
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
-        estimator=LinearSVC(random_state=42),
-        step=5, #steps moeten omlaag naar 1 eigenlijk
+        estimator=RandomForestClassifier(random_state=42),
+        step=40, #steps moeten omlaag naar 1 eigenlijk
         cv=4,
         scoring=f2_scorer
     )
 }
 
 # Cross-validation
-outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42) #folds moeten omhoog
-inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42) #folds moeten omhoog
+outer_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
 
 results = []
 
@@ -104,6 +100,7 @@ best_score = -np.inf
 best_std = None
 best_grid = None
 best_name = None
+
 all_outer_scores = {}
 
 # Nested CV loop maken
@@ -112,39 +109,40 @@ for clf_name, clf in classifiers.items():
 
         print(f"\nEvaluating {clf_name} with {selector_name}")
 
-        #Pipeline opbouwen
-        steps = [
+        # Pipeline met preprocessing BINNEN de CV-loop
+        pipeline = Pipeline([
             ('variance', VarianceThreshold(threshold=0.0)),
             ('correlation', CorrelationFilter(threshold=0.95)),
-            ('scaler', RobustScaler()), 
+            ('scaler', RobustScaler()),
             ('feature_selection', selector),
-            ('classifier', clf) 
-        ]
+            ('classifier', clf)
+        ])
 
-        pipeline = Pipeline(steps)
-
-        # Hyperparameters
+        # Hyperparameters per classifier
         param_grid = {}
 
         if clf_name == 'Logistic Regression':
             param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
-            param_grid['classifier__penalty'] = ['l2']
 
         elif clf_name == 'Random Forest':
-            param_grid['classifier__n_estimators'] = [50, 100, 200, 300]
-            param_grid['classifier__max_depth'] = [None, 5, 10]   
+            param_grid['classifier__n_estimators'] = [50, 100, 200]
+            param_grid['classifier__max_depth'] = [None, 5, 10]
+            param_grid['classifier__min_samples_split'] = [2, 5, 10]
+            param_grid['classifier__min_samples_leaf'] = [1, 2, 4]
 
-        elif clf_name == 'linearSVM':
-            param_grid['classifier__C'] =  [0.01, 0.1, 1, 10]
-
-        elif clf_name == 'rbfSVM':
-            param_grid['classifier__C'] =  [0.01, 0.1, 1, 10]
-            param_grid['classifier__gamma'] = ['scale', 'auto']
+        elif clf_name == 'SVM':
+            param_grid = {
+                'classifier__C': [0.1, 1, 10]
+            }
 
         if selector_name == 'Mann-Whitney U':
-            param_grid['feature_selection__k'] = [5, 10, 15, 20]
-        
-        # GridSearch
+            if isinstance(param_grid, list):
+                for grid_dict in param_grid:
+                    grid_dict['feature_selection__k'] = [5, 10, 15, 20]
+            else:
+                param_grid['feature_selection__k'] = [5, 10, 15, 20]
+
+        # Grid search (inner loop)
         grid = GridSearchCV(
             pipeline,
             param_grid,
@@ -153,7 +151,7 @@ for clf_name, clf in classifiers.items():
             n_jobs=-1
         )
 
-        # Outer CV
+        # Outer loop
         outer_scores = cross_val_score(
             grid,
             X_train,
@@ -167,10 +165,11 @@ for clf_name, clf in classifiers.items():
         mean_score = outer_scores.mean()
         std_score = outer_scores.std()
 
-        print(f"Outer CV F2-score: {mean_score:.4f} ± {std_score:.4f}")
+        print(f"Outer CV f2-score: {mean_score:.4f} ± {std_score:.4f}")
 
         results.append((clf_name, selector_name, mean_score, std_score))
 
+        # Beste model bewaren
         if mean_score > best_score:
             best_score = mean_score
             best_std = std_score
@@ -183,9 +182,7 @@ for result in results:
     print(f"{result[0]} with {result[1]}: Mean = {result[2]:.4f}, Std = {result[3]:.4f}")
 
 # Beste model opnieuw fitten op hele trainingsset, want je hebt nog niet getrained op de hele trainset
-
 best_grid.fit(X_train, y_train)
-
 
 # Learning curve
 train_sizes, train_scores, val_scores = learning_curve(
