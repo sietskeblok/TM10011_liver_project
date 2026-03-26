@@ -1,3 +1,5 @@
+# This script imports and processes data containing quantitative medical image features extracted from T2-weighted MRI
+
 # Import and pre-processing data 
 import numpy as np
 from sklearn.model_selection import train_test_split 
