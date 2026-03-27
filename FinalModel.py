@@ -293,6 +293,59 @@ plt.title(f"ROC curve\nNested CV ROC_AUC-score = {best_score:.2f} ± {best_std:.
 plt.legend()
 plt.show()
 
+#ROC curve for all outer folds, mean ROC and standard deviations
+
+mean_fpr = np.linspace(0, 1, 100)
+tprs = []
+aucs = []
+
+plt.figure(figsize=(8, 6))
+
+for i, (train_idx, val_idx) in enumerate(outer_cv.split(X_train, y_train)):
+    X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
+    y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+
+    # opnieuw nested CV binnen deze outer fold
+    model = clone(best_grid)
+    model.fit(X_tr, y_tr)
+
+    y_score = model.predict_proba(X_val)[:, 1]
+
+    fpr, tpr, _ = roc_curve(y_val, y_score)
+    fold_auc = roc_auc_score(y_val, y_score)
+
+    interp_tpr = np.interp(mean_fpr, fpr, tpr)
+    interp_tpr[0] = 0.0
+
+    tprs.append(interp_tpr)
+    aucs.append(fold_auc)
+
+    plt.plot(fpr, tpr, lw=1, alpha=0.3, label=f"ROC fold {i} (AUC = {fold_auc:.2f})")
+
+mean_tpr = np.mean(tprs, axis=0)
+mean_tpr[-1] = 1.0
+std_tpr = np.std(tprs, axis=0)
+
+mean_auc = np.mean(aucs)
+std_auc = np.std(aucs)
+
+tpr_upper = np.minimum(mean_tpr + std_tpr, 1)
+tpr_lower = np.maximum(mean_tpr - std_tpr, 0)
+
+plt.plot([0, 1], [0, 1], linestyle='--', color='red', lw=2, label='Chance')
+plt.plot(mean_fpr, mean_tpr, color='blue', lw=2.5,
+         label=f"Mean ROC (AUC = {mean_auc:.2f} ± {std_auc:.2f})")
+plt.fill_between(mean_fpr, tpr_lower, tpr_upper, color='grey', alpha=0.2,
+                 label='± 1 std. dev.')
+
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title(f"Outer CV ROC curve: {best_name[0]} + {best_name[1]}")
+plt.legend(loc="lower right")
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
 # Boxplot visualization
 labels = []
 score_data = []
