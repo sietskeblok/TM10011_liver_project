@@ -88,14 +88,14 @@ feature_selectors = {
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
         estimator=LinearSVC(random_state=42),
-        step=10, #steps moeten omlaag naar 1 eigenlijk
+        step=5, #steps moeten omlaag naar 1 eigenlijk
         cv=4,
         scoring='roc_auc'
     )
 }
 
 # Cross-validation
-outer_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
+outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42) #folds moeten omhoog
 inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) #folds moeten omhoog
 
 results = []
