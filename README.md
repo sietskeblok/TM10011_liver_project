@@ -1,4 +1,77 @@
-# TM10011_PROJECT
+# Liver Tumour Classification using Machine Learning
 
-Welcome to the GitHub of group nr. 7 of the course Machine Learning. The assignment is to write a model to distinguish benign from malignant primary solid liver tumours. The group members are Sietske Blok, Donna de Leur, Piotr van Dijk and Max Lindaart.
+This repository contains the project of Group 7 for the course Machine Learning (TM10011.
+The objective of this assignment is to develop a machine learning model capable of distinguishing benign from malignant primary solid liver tumours using radiomic features extracted from T2-weighted MRI scans.
+
+# Project Overview
+
+The goal of this project was to build a classification model that predicts whether a liver lesion is benign or malignant.
+Multiple feature selection methods and classification models were evaluated and compared using nested cross-validation.
+The best-performing model was a Random Forest classifier without prior feature selection, achieving a ROC AUC of 0.76 on the test set.
+
+# Dataset
+
+The dataset consists of radiomic features extracted from T2-weighted MRI scans of liver lesions.
+Each observation represents a liver lesion and contains:
+-Radiomic imaging features
+-A label:
+  -benign (0)
+  -malignant (1)
+
+The dataset was split into:
+-Training set (used for model development and nested cross-validation)
+-Test set (held out for final evaluation)
+
+# Machine Learning Pipeline
+
+The modelling pipeline consisted of the following steps:
+
+1. Preprocessing
+   -Variance filtering
+   -Correlation filtering
+   -Robust scaling
+
+2. Feature Selection
+   -Mann–Whitney U test
+   -RFECV
+   -No feature selection
+
+3. Classification Models
+   -Logistic Regression
+   -Support Vector Machine (SVM)
+   -Random Forest
+
+5. Model Selection
+   -Hyperparameter tuning using RandomizedSearchCV
+   -Nested cross-validation to prevent data leakage
+
+# Results
+
+Best model configuration:
+  -Classifier: Random Forest
+  -Feature Selection: None
+  -Evaluation metric: ROC AUC
+  -Test ROC AUC: 0.76
+
+# Repository Structure
+
+Main scripts in this repository:
+  -assignment.py
+  Loads the dataset and performs the initial train–test split.
+  -pre-processing.py
+  Performs preprocessing steps such as scaling and filtering.
+  -Featuresel.py
+  Runs feature selection, hyperparameter tuning, model training, and evaluation.
+
+# How to Run the Project
+
+To reproduce the results, run the scripts in the following order:
+
+1. assignment.py
+2. pre-processing.py
+3. 'Featuresel.py
+
+# Authors
+
+Group 7: Sietske Blok (S.J.R.Blok@student.tudelft.nl), Donna de Leur (D.deLeur@student.tudelft.nl), Piotr van Dijk (P.S.vanDijk@student.tudelft.nl) and Max Lindaart (M.H.Lindaart@student.tudelft.nl).
 
