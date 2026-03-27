@@ -56,20 +56,20 @@ Best model configuration:
 # Repository Structure
 
 Main scripts in this repository:
-  - assignment.py
+  - ImportData.py
   Loads the dataset and performs the initial train–test split.
-  - pre-processing.py
+  - CorrelationVarianceFilter.py
   Performs preprocessing steps such as scaling and filtering.
-  - Featuresel.py
+  - FinalModel.py
   Runs feature selection, hyperparameter tuning, model training, and evaluation.
 
 # How to Run the Project
 
 To reproduce the results, run the scripts in the following order:
 
-1. assignment.py
-2. pre-processing.py
-3. 'Featuresel.py
+1. ImportData.py
+2. CorrelationVariance.py
+3. FinalModel.py
 
 # Authors
 
