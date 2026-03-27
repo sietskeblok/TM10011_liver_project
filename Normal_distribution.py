@@ -1,56 +1,30 @@
-# controleren normale verdeling data-set met Anderson-Darrling test
-from scipy.stats import anderson
+# This script assesses the normal distribution of each feature in the dataset 
 
-# Import de variabelen uit assignment.py
-from assignment import X, y
+# Import modules
+from ImportData import X, y
 
-
-# Lijst om Anderson-Darling resultaten op te slaan
-normal_features = []
-non_normal_features = []
-
-# Voer de Anderson-Darling test uit voor elke feature
-for column in X.columns:
-    result = anderson(X[column].dropna(), dist='norm')
-    
-    # Als de teststatistiek groter is dan de kritische waarde bij 5% significatie, dan is het niet normaal verdeeld
-    if result.statistic > result.critical_values[2]:  # Vergelijk met de kritische waarde voor 5% significantie
-        non_normal_features.append(column)
-    else:
-        normal_features.append(column)
-
-# Bereken het percentage van normaal en niet-normaal verdeelde features
-total_features = len(X.columns)
-normal_percentage = (len(normal_features) / total_features) * 100
-non_normal_percentage = (len(non_normal_features) / total_features) * 100
-
-# Print de resultaten
-print(f"Aantal normaal verdeelde features: {len(normal_features)} ({normal_percentage:.2f}%)")
-print(f"Aantal niet normaal verdeelde features: {len(non_normal_features)} ({non_normal_percentage:.2f}%)")
-
-#Shapiro wilk test voor normaal verdeling
+# Shapiro-Wilk test for normal distribution 
 from scipy.stats import shapiro
 
-
-# Lijsten om resultaten op te slaan
+# Creation of lists to save Shapiro-Wilk test results
 normal_features_sw = []
 non_normal_features_sw = []
 
-# Voer de Shapiro-Wilk test uit voor elke feature
+# Assessment of Shapiro-Wilk test for each feature
 for column in X.columns:
     stat, p_value = shapiro(X[column].dropna())
 
-    # Als p < 0.05 -> niet normaal verdeeld
+    # Non-normal distribution if p < 0.05 
     if p_value < 0.05:
         non_normal_features_sw.append(column)
     else:
         normal_features_sw.append(column)
 
-# Bereken percentages
+# Calculation of percentages
 total_features = len(X.columns)
 normal_percentage = (len(normal_features_sw) / total_features) * 100
 non_normal_percentage = (len(non_normal_features_sw) / total_features) * 100
 
-# Print resultaten
-print(f"Aantal normaal verdeelde features shapiro wilk: {len(normal_features_sw)} ({normal_percentage:.2f}%)")
-print(f"Aantal niet normaal verdeelde features shapiro wilk: {len(non_normal_features_sw)} ({non_normal_percentage:.2f}%)")
+# Print results
+print(f"Amount of normally distributed features assessed with Shapiro-Wilk test: {len(normal_features_sw)} ({normal_percentage:.2f}%)")
+print(f"Amount of non-normally distributed features assessed with Shapiro-Wilk test: {len(non_normal_features_sw)} ({non_normal_percentage:.2f}%)")

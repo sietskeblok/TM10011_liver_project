@@ -1,12 +1,14 @@
 # This script imports and processes data containing quantitative medical image features extracted from T2-weighted MRI
 
 # Import and pre-processing data 
+import warnings
 import numpy as np
 from sklearn.model_selection import train_test_split 
 import pandas as pd
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import RobustScaler
 from worcliver.load_data import load_data
+warnings.filterwarnings("ignore") 
 
 # Import data
 data = load_data()
