@@ -13,54 +13,54 @@ The best-performing model was a Random Forest classifier without prior feature s
 
 The dataset consists of radiomic features extracted from T2-weighted MRI scans of liver lesions.
 Each observation represents a liver lesion and contains:
--Radiomic imaging features
--A label:
-  -benign (0)
-  -malignant (1)
+- Radiomic imaging features
+- A label:
+  - benign (0)
+  - malignant (1)
 
 The dataset was split into:
--Training set (used for model development and nested cross-validation)
--Test set (held out for final evaluation)
+- Training set (used for model development and nested cross-validation)
+- Test set (held out for final evaluation)
 
 # Machine Learning Pipeline
 
 The modelling pipeline consisted of the following steps:
 
 1. Preprocessing
-   -Variance filtering
-   -Correlation filtering
-   -Robust scaling
+   - Variance filtering
+   - Correlation filtering
+   - Robust scaling
 
 2. Feature Selection
-   -Mann–Whitney U test
-   -RFECV
-   -No feature selection
+   - Mann–Whitney U test
+   - RFECV
+   - No feature selection
 
 3. Classification Models
-   -Logistic Regression
-   -Support Vector Machine (SVM)
-   -Random Forest
+   - Logistic Regression
+   - Support Vector Machine (SVM)
+   - Random Forest
 
 5. Model Selection
-   -Hyperparameter tuning using RandomizedSearchCV
-   -Nested cross-validation to prevent data leakage
+   - Hyperparameter tuning using RandomizedSearchCV
+   - Nested cross-validation to prevent data leakage
 
 # Results
 
 Best model configuration:
-  -Classifier: Random Forest
-  -Feature Selection: None
-  -Evaluation metric: ROC AUC
-  -Test ROC AUC: 0.76
+  - Classifier: Random Forest
+  - Feature Selection: None
+  - Evaluation metric: ROC AUC
+  - Test ROC AUC: 0.76
 
 # Repository Structure
 
 Main scripts in this repository:
-  -assignment.py
+  - assignment.py
   Loads the dataset and performs the initial train–test split.
-  -pre-processing.py
+  - pre-processing.py
   Performs preprocessing steps such as scaling and filtering.
-  -Featuresel.py
+  - Featuresel.py
   Runs feature selection, hyperparameter tuning, model training, and evaluation.
 
 # How to Run the Project
