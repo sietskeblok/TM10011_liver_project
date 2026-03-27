@@ -321,7 +321,6 @@ ConfusionMatrixDisplay.from_estimator(
 plt.title("Confusion Matrix (Normalized)")
 plt.show()
 
-
 # Receiver operating characteristic (ROC) curve of the best-performing model for every outer CV fold
 
 # Create a common set of FPR values for interpolation
