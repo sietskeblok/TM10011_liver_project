@@ -142,9 +142,10 @@ for clf_name, clf in classifiers.items():
 
         if clf_name == 'Logistic Regression':
             param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
-            param_grid['classifier__penalty'] = ['l2']
+            param_grid['classifier__penalty'] = ['l1','l2', 'elasticnet']
+            param_grid['classifier__l1_ratio'] = [0.2, 0.5, 0.8]
 
-        elif clf_name == 'Random Forest':
+        if clf_name == 'Random Forest':
             param_grid['classifier__n_estimators'] = [50, 100, 200, 300]
             param_grid['classifier__max_depth'] = [None, 5, 10]  
             param_grid['classifier__max_features'] = ['sqrt', 'log2', 0.2, 0.5] 
