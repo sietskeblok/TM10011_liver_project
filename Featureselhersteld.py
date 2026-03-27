@@ -1,9 +1,6 @@
 # This script contains the code for the TM10011 Liver Project (Group 7) and trains/tests the optimal ML model
 
 # Import modules
-import warnings
-warnings.filterwarnings("ignore") 
-
 import numpy as np
 import pandas as pd
 import joblib
@@ -90,7 +87,7 @@ def mannwhitneyu_test(X, y):
 
 # Different types of classifiers
 classifiers = {
-    'Logistic Regression': LogisticRegression(max_iter=7500, solver='saga', random_state=42),
+    'Logistic Regression': LogisticRegression(max_iter=1000, solver='saga'),
     'Random Forest': RandomForestClassifier(random_state=42),
     'linearSVM': SVC(kernel='linear', probability=True)  
 }
@@ -100,7 +97,7 @@ feature_selectors = {
     'None': None,
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
-        estimator=LogisticRegression(random_state=42, max_iter=5000),
+        estimator=LinearSVC(random_state=42),
         step=5, # Remove 5 features per iteration
         cv=4,
         scoring='roc_auc'
@@ -144,7 +141,8 @@ for clf_name, clf in classifiers.items():
 
         if clf_name == 'Logistic Regression':
             param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
-            param_grid['classifier__penalty'] = ['l2']
+            param_grid['classifier__penalty'] = ['l1','l2', 'elasticnet']
+            param_grid['classifier__l1_ratio'] = [0.2, 0.5, 0.8]
 
         elif clf_name == 'Random Forest':
             param_grid['classifier__n_estimators'] = [50, 100, 200, 300]
