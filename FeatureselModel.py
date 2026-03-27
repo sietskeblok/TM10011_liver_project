@@ -77,10 +77,10 @@ def mannwhitneyu_test(X, y):
 
 # Verschillende classifiers in ons model
 classifiers = {
-    'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
+    'Logistic Regression': LogisticRegression(max_iter=7500, solver='saga', random_state=42),
     'Random Forest': RandomForestClassifier(random_state=42),
     #'rbfSVM': SVC(kernel='rbf', probability=True),
-    'linearSVM': SVC(kernel='linear', probability=True)  #dit nog aanpassen naar polynoom?
+    'linearSVM': SVC(kernel='linear', probability=True)  
 }
 
 # Feature selectie modellen
@@ -88,7 +88,7 @@ feature_selectors = {
     'None': None,
     'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
-        estimator=LinearSVC(random_state=42),
+        estimator=LogisticRegression(random_state=42, max_iter=5000),
         step=5, #steps moeten omlaag naar 1 eigenlijk
         cv=4,
         scoring='roc_auc'
@@ -129,9 +129,10 @@ for clf_name, clf in classifiers.items():
 
         if clf_name == 'Logistic Regression':
             param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
-            param_grid['classifier__penalty'] = ['l2']
+            param_grid['classifier__penalty'] = ['l1','l2', 'elasticnet']
+            param_grid['classifier__l1_ratio'] = [0.2, 0.5, 0.8]
 
-        elif clf_name == 'Random Forest':
+        if clf_name == 'Random Forest':
             param_grid['classifier__n_estimators'] = [50, 100, 200, 300]
             param_grid['classifier__max_depth'] = [None, 5, 10]  
             param_grid['classifier__max_features'] = ['sqrt', 'log2', 0.2, 0.5] 
