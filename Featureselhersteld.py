@@ -1,14 +1,16 @@
 # This script contains the code for the TM10011 Liver Project (Group 7) and trains/tests the optimal ML model
 
 # Import modules
+
+import warnings
+warnings.filterwarnings("ignore") 
 import numpy as np
 import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
 from scipy.stats import mannwhitneyu
-
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.calibration import LinearSVC
+from sklearn.svm import LinearSVC
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, GridSearchCV
 from sklearn.feature_selection import RFECV, SelectKBest, VarianceThreshold
 from sklearn.linear_model import LogisticRegression
@@ -87,7 +89,7 @@ def mannwhitneyu_test(X, y):
 
 # Different types of classifiers
 classifiers = {
-    'Logistic Regression': LogisticRegression(max_iter=1000, solver='saga'),
+    'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
     'Random Forest': RandomForestClassifier(random_state=42),
     'linearSVM': SVC(kernel='linear', probability=True)  
 }
@@ -141,9 +143,8 @@ for clf_name, clf in classifiers.items():
 
         if clf_name == 'Logistic Regression':
             param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
-            param_grid['classifier__penalty'] = ['l1','l2', 'elasticnet']
-            param_grid['classifier__l1_ratio'] = [0.2, 0.5, 0.8]
-
+            param_grid['classifier__penalty'] = ['l1', 'l2']
+            
         elif clf_name == 'Random Forest':
             param_grid['classifier__n_estimators'] = [50, 100, 200, 300]
             param_grid['classifier__max_depth'] = [None, 5, 10]  

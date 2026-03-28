@@ -1,14 +1,16 @@
 # This script contains the code for the TM10011 Liver Project (Group 7) and trains/tests the optimal ML model
 
 # Import modules
+
 import warnings
+warnings.filterwarnings("ignore") 
 import numpy as np
 import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
 from scipy.stats import mannwhitneyu
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.calibration import LinearSVC
+from sklearn.svm import LinearSVC
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, GridSearchCV
 from sklearn.feature_selection import RFECV, SelectKBest, VarianceThreshold
 from sklearn.linear_model import LogisticRegression
@@ -22,7 +24,7 @@ from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.model_selection import learning_curve
-warnings.filterwarnings("ignore") 
+from sklearn.base import clone
 
 # Load pre-processed training and test data
 X_train = pd.read_pickle("X_train.pkl")
@@ -32,15 +34,14 @@ y_test = pd.read_pickle("y_test.pkl")
 
 # Correlation filter to remove highly correlated features
 class CorrelationFilter(BaseEstimator, TransformerMixin):
-    def __init__(self, threshold = 0.95):
+    def __init__(self, threshold=0.95):
 
         # Set correlation treshold above which a feature will be removed
         self.threshold = threshold
         self.to_drop_ = None
         self.columns_ = None
 
-    def fit(self, X, y = None):
-
+    def fit(self, X, y=None):
         # Convert input to dataframe 
         X = pd.DataFrame(X)
         self.columns_ = X.columns
@@ -49,7 +50,7 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
         corr_matrix = X.corr().abs()
 
         # Keep upper triangle of correlation matrix
-        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k = 1).astype(bool))
+        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
 
         # Identify features to remove that have a correlation above treshold
         self.to_drop_ = [col for col in upper.columns if any(upper[col] > self.threshold)]
@@ -63,7 +64,7 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
         X.columns = self.columns_
 
         # Remove highly correlated columns
-        return X.drop(columns = self.to_drop_, errors = 'ignore')
+        return X.drop(columns=self.to_drop_, errors='ignore')
 
 # Feature selection using Mann-Whitney U 
 def mannwhitneyu_test(X, y):
@@ -88,26 +89,26 @@ def mannwhitneyu_test(X, y):
 
 # Different types of classifiers
 classifiers = {
-    'Logistic Regression': LogisticRegression(max_iter = 1000, solver = 'liblinear'),
-    'Random Forest': RandomForestClassifier(random_state = 42),
-    'linearSVM': SVC(kernel = 'linear', probability = True) 
+    'Logistic Regression': LogisticRegression(max_iter=1000, solver='liblinear'),
+    'Random Forest': RandomForestClassifier(random_state=42),
+    'linearSVM': SVC(kernel='linear', probability=True)  
 }
 
 # Different types of feature selection techniques
 feature_selectors = {
     'None': None,
-    'Mann-Whitney U': SelectKBest(score_func = mannwhitneyu_test),
+    'Mann-Whitney U': SelectKBest(score_func=mannwhitneyu_test),
     'RFECV': RFECV(
-        estimator = LinearSVC(random_state=42),
-        step = 10, # Remove 10 features per iteration
-        cv = 4,
-        scoring = 'roc_auc'
+        estimator=LinearSVC(random_state=42),
+        step=5, # Remove 5 features per iteration
+        cv=4,
+        scoring='roc_auc'
     )
 }
 
 # Cross-validation
-outer_cv = StratifiedKFold(n_splits = 5, shuffle = True, random_state = 42) 
-inner_cv = StratifiedKFold(n_splits = 3, shuffle = True, random_state = 42) 
+outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42) 
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42) 
 
 results = []
 
@@ -142,10 +143,9 @@ for clf_name, clf in classifiers.items():
 
         if clf_name == 'Logistic Regression':
             param_grid['classifier__C'] = [0.01, 0.1, 1, 10]
-            param_grid['classifier__penalty'] = ['l1','l2', 'elasticnet']
-            param_grid['classifier__l1_ratio'] = [0.2, 0.5, 0.8]
-
-        if clf_name == 'Random Forest':
+            param_grid['classifier__penalty'] = ['l1', 'l2']
+            
+        elif clf_name == 'Random Forest':
             param_grid['classifier__n_estimators'] = [50, 100, 200, 300]
             param_grid['classifier__max_depth'] = [None, 5, 10]  
             param_grid['classifier__max_features'] = ['sqrt', 'log2', 0.2, 0.5] 
@@ -199,40 +199,11 @@ for result in results:
 
 # Train optimal machine learning model on outer loop training data
 best_grid.fit(X_train, y_train)
-
-# Predict class labels for the test set
 y_pred = best_grid.predict(X_test)
 
-# Outer loop test set evaluation
+# Optimal model performance visualization
 
-# ROC-AUC 
-if hasattr(best_grid, "decision_function"):
-    y_score = best_grid.decision_function(X_test)
-else:
-    y_score = best_grid.predict_proba(X_test)[:, 1]
-
-# Performance metrics
-accuracy = accuracy_score(y_test, y_pred)
-roc_auc = roc_auc_score(y_test, y_score)
-
-# Confusion matrix 
-tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
-
-# Calculate sensitivity (recall) en specificity
-sensitivity = tp / (tp + fn)  
-specificity = tn / (tn + fp)  
-
-print("\nTest set performance:")
-print(f"Accuracy: {accuracy:.4f}")
-print(f"False Positives (benign → malignant): {fp}")
-print(f"False Negatives (malignant → benign): {fn}")
-print(f"ROC_AUC-score: {roc_auc:.4f}")
-print(f"Sensitivity (Recall): {sensitivity:.4f}")
-print(f"Specificity: {specificity:.4f}")
-
-# Model performance visualization
-
-# Learning curve visualization
+# Learning curve
 train_sizes, train_scores, val_scores = learning_curve(
     estimator=best_grid,
     X=X_train,
@@ -267,13 +238,38 @@ joblib.dump(best_grid, "best_model.pkl")
 # Predict class labels for the test set
 y_pred = best_grid.predict(X_test)
 
-# Print optimal machine learning model
+# Print optimal machine learning model and its hyperparameters
 print(f"\nBest model: {best_name[0]} with {best_name[1]}")
-
 print("\nBest hyperparameters:")
 for param, value in best_grid.best_params_.items():
     print(f"{param}: {value}")
     
+# Calculation of performance metric accuracy
+accuracy = accuracy_score(y_test, y_pred)
+
+# ROC-AUC 
+if hasattr(best_grid, "decision_function"):
+    y_score = best_grid.decision_function(X_test)
+else:
+    y_score = best_grid.predict_proba(X_test)[:, 1]
+
+roc_auc = roc_auc_score(y_test, y_score)
+
+# Calculation of confusion matrix
+tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+
+# Calculation of sensitivity (recall) and specificity
+sensitivity = tp / (tp + fn)  # Sensitiviteit
+specificity = tn / (tn + fp)  # Specificiteit
+
+print("\nTest set performance:")
+print(f"Accuracy: {accuracy:.4f}")
+print(f"False Positives (benign → malignant): {fp}")
+print(f"False Negatives (malignant → benign): {fn}")
+print(f"ROC_AUC-score: {roc_auc:.4f}")
+print(f"Sensitivity (Recall): {sensitivity:.4f}")
+print(f"Specificity: {specificity:.4f}")
+
 # ROC AUC visualization
 
 # Predict probabilities for the positive class (malignant = 1)
@@ -292,59 +288,6 @@ plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate")
 plt.title(f"ROC curve\nNested CV ROC_AUC-score = {best_score:.2f} ± {best_std:.2f}")
 plt.legend()
-plt.show()
-
-#ROC curve for all outer folds, mean ROC and standard deviations
-
-mean_fpr = np.linspace(0, 1, 100)
-tprs = []
-aucs = []
-
-plt.figure(figsize=(8, 6))
-
-for i, (train_idx, val_idx) in enumerate(outer_cv.split(X_train, y_train)):
-    X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
-    y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
-
-    # opnieuw nested CV binnen deze outer fold
-    model = clone(best_grid)
-    model.fit(X_tr, y_tr)
-
-    y_score = model.predict_proba(X_val)[:, 1]
-
-    fpr, tpr, _ = roc_curve(y_val, y_score)
-    fold_auc = roc_auc_score(y_val, y_score)
-
-    interp_tpr = np.interp(mean_fpr, fpr, tpr)
-    interp_tpr[0] = 0.0
-
-    tprs.append(interp_tpr)
-    aucs.append(fold_auc)
-
-    plt.plot(fpr, tpr, lw=1, alpha=0.3, label=f"ROC fold {i} (AUC = {fold_auc:.2f})")
-
-mean_tpr = np.mean(tprs, axis=0)
-mean_tpr[-1] = 1.0
-std_tpr = np.std(tprs, axis=0)
-
-mean_auc = np.mean(aucs)
-std_auc = np.std(aucs)
-
-tpr_upper = np.minimum(mean_tpr + std_tpr, 1)
-tpr_lower = np.maximum(mean_tpr - std_tpr, 0)
-
-plt.plot([0, 1], [0, 1], linestyle='--', color='red', lw=2, label='Chance')
-plt.plot(mean_fpr, mean_tpr, color='blue', lw=2.5,
-         label=f"Mean ROC (AUC = {mean_auc:.2f} ± {std_auc:.2f})")
-plt.fill_between(mean_fpr, tpr_lower, tpr_upper, color='grey', alpha=0.2,
-                 label='± 1 std. dev.')
-
-plt.xlabel("False Positive Rate")
-plt.ylabel("True Positive Rate")
-plt.title(f"Outer CV ROC curve: {best_name[0]} + {best_name[1]}")
-plt.legend(loc="lower right")
-plt.grid(True)
-plt.tight_layout()
 plt.show()
 
 # Boxplot visualization
@@ -375,4 +318,72 @@ ConfusionMatrixDisplay.from_estimator(
 )
 
 plt.title("Confusion Matrix (Normalized)")
+plt.show()
+
+# Receiver operating characteristic (ROC) curve of the best-performing model for every outer CV fold
+
+# Create a common set of FPR values for interpolation
+mean_fpr = np.linspace(0, 1, 100)
+
+# Lists to store interpolated TPRs and AUC scores for each fold
+tprs = []
+aucs = []
+
+plt.figure(figsize=(8, 6))
+
+# Loop over each fold in outer cross-validation
+for i, (train_idx, val_idx) in enumerate(outer_cv.split(X_train, y_train)):
+
+    # Loop over each fold in outer cross-validation
+    X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
+    y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+    
+    # Clone best model
+    model = clone(best_grid)
+
+    # Train model on training split
+    model.fit(X_tr, y_tr)
+
+    # Predict probabilities for the positive class
+    y_score = model.predict_proba(X_val)[:, 1]
+
+    # Compute ROC curve and AUC for this fold
+    fpr, tpr, _ = roc_curve(y_val, y_score)
+    fold_auc = roc_auc_score(y_val, y_score)
+
+    # Interpolate TPR values to align with mean_fpr
+    interp_tpr = np.interp(mean_fpr, fpr, tpr)
+    interp_tpr[0] = 0.0
+
+    # Store results
+    tprs.append(interp_tpr)
+    aucs.append(fold_auc)
+
+    plt.plot(fpr, tpr, lw=1, alpha=0.3, label=f"ROC fold {i} (AUC = {fold_auc:.2f})")
+
+# Compute mean and standard deviation of TPRs across folds
+mean_tpr = np.mean(tprs, axis=0)
+mean_tpr[-1] = 1.0
+std_tpr = np.std(tprs, axis=0)
+
+# Compute mean and standard deviation of AUC scores
+mean_auc = np.mean(aucs)
+std_auc = np.std(aucs)
+
+# Define upper and lower bounds
+tpr_upper = np.minimum(mean_tpr + std_tpr, 1)
+tpr_lower = np.maximum(mean_tpr - std_tpr, 0)
+
+plt.plot([0, 1], [0, 1], linestyle='--', color='red', lw=2, label='Chance')
+plt.plot(mean_fpr, mean_tpr, color='blue', lw=2.5,
+         label=f"Mean ROC (AUC = {mean_auc:.2f} ± {std_auc:.2f})")
+plt.fill_between(mean_fpr, tpr_lower, tpr_upper, color='grey', alpha=0.2,
+                 label='± 1 std. dev.')
+
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title(f"Outer CV ROC curve: {best_name[0]} + {best_name[1]}")
+plt.legend(loc="lower right")
+plt.grid(True)
+plt.tight_layout()
 plt.show()

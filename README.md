@@ -42,7 +42,7 @@ The modelling pipeline consisted of the following steps:
    - Random Forest
 
 5. Model Selection
-   - Hyperparameter tuning using RandomizedSearchCV
+   - Hyperparameter tuning using GridSearchCV
    - Nested cross-validation to prevent data leakage
 
 # Results
