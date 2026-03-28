@@ -9,6 +9,8 @@ The goal of this project was to build a classification model that predicts wheth
 Multiple feature selection methods and classification models were evaluated and compared using nested cross-validation.
 The best-performing model was a Random Forest classifier without prior feature selection, achieving a ROC AUC of 0.76 on the test set.
 
+This analysis was performed using Python version 3.14.2, numpy 2.4.2, pandas 3.0.1, scikit-learn 1.8.0, seaborn 0.13.2 and matplotlib 3.10.8.
+
 # Dataset
 
 The dataset consists of radiomic features extracted from T2-weighted MRI scans of liver lesions.
