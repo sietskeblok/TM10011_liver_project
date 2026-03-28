@@ -58,18 +58,25 @@ Best model configuration:
 Main scripts in this repository:
   - ImportData.py
   Loads the dataset and performs the initial train–test split.
-  - CorrelationVarianceFilter.py
-  Performs preprocessing steps such as scaling and filtering.
   - FinalModel.py
   Runs feature selection, hyperparameter tuning, model training, and evaluation.
+
+Remaining scripts:
+   - CorelationVarianceFilter.py
+   Performs variance and correlation filtering on dataset and provides insight in remaining features
+   - Data_inspection.py
+   Inspects the data 
+   - Normal_distribution.py
+   Assesses normal distribution of each feature in dataset 
+   - RFECV.py
+   Feature selection RFECV with Random Forest to select k-best features
 
 # How to Run the Project
 
 To reproduce the results, run the scripts in the following order:
 
 1. ImportData.py
-2. CorrelationVariance.py
-3. FinalModel.py
+2. FinalModel.py
 
 # Authors
 
