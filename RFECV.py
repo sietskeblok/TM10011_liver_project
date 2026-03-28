@@ -1,7 +1,9 @@
-#load data
-from assignment import X_train, y_train
+# This script uses RFECV with a Random Forest to select the most important features.
 
-#imports
+# Load data
+from ImportData import X_train, y_train
+
+# Import modules
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn import svm
@@ -17,18 +19,14 @@ import numpy as np
 from sklearn.model_selection import train_test_split 
 import seaborn as sns
 import matplotlib.pyplot as plt
-
 from worcliver.load_data import load_data
 
-
-
-# Create the RFE object and compute a cross-validated score.
+# Create the RFE object and compute a cross-validated score
 svc = svm.SVC(kernel="rbf")
 
 from sklearn.ensemble import RandomForestClassifier
-print("werkt")
 
-#classifier
+# RF classifier
 rf = RandomForestClassifier(n_estimators=100, random_state=42)
 rfecv = feature_selection.RFECV(
     estimator=rf, step=1,
@@ -39,22 +37,23 @@ print("RFECV fitting complete.")
 
 print("Selectie compleet")
 
-# Vind de index van de iteratie waar 50 features geselecteerd zijn
+# Find index of iteration where 50 features are selected
 features_50_index = np.where(np.array(range(1, len(rfecv.cv_results_["mean_test_score"]) + 1)) == 50)[0][0]
 
-# Haal de score voor die iteratie
+# Return score for iteration
 score_50_features = rfecv.cv_results_["mean_test_score"][features_50_index]
 print(f"Cross-validation score for 50 selected features: {score_50_features}")
 
-# Haal de 50 geselecteerde features op
+# Return 50 selected features
 selected_50_features = X_train.columns[rfecv.support_][:50]
 print(f"The 50 selected features are: {selected_50_features}")
 
 print(len(selected_50_features))
 
-# Plot de cross-validatie scores per aantal geselecteerde features
+# Plot cross-validation scores per amount of selected features
 plt.figure()
 plt.xlabel("Number of features selected")
 plt.ylabel("Cross validation score (nb of correct classifications)")
+plt.title("RFECV: Feature Selection Performance")
 plt.plot(range(1, len(rfecv.cv_results_["mean_test_score"]) + 1), rfecv.cv_results_["mean_test_score"])
 plt.show()
